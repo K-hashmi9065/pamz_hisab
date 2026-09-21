@@ -1,49 +1,79 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_constants.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/app_date_utils.dart';
-import '../../../../shared/widgets/app_button.dart';
-import '../../../../shared/widgets/app_card.dart';
-import '../../../../shared/widgets/app_states.dart';
-import '../../../../shared/widgets/app_bar_widgets.dart';
-import '../../../analytics_reports/presentation/providers/analytics_providers.dart';
-import '../../../direct_udhar/presentation/widgets/direct_udhar_form_sheet.dart';
-import '../../../family_finance/presentation/providers/family_finance_providers.dart';
-import '../../../family_finance/presentation/widgets/transaction_form_sheet.dart';
+import '../../../../core/utils/currency_formatter.dart';
+import '../../../../routes/route_names.dart';
+import '../../../fund_ledger/domain/entities/fl_dashboard_summary.dart';
+import '../../../fund_ledger/presentation/providers/fl_transaction_providers.dart';
+import '../../../fund_ledger/presentation/screens/fl_contact_form_screen.dart';
+import '../../../fund_ledger/presentation/widgets/fl_receive_form.dart';
+import '../../../fund_ledger/presentation/widgets/fl_return_form.dart';
+import '../../../fund_ledger/presentation/widgets/fl_summary_card.dart';
+import '../../../fund_ledger/presentation/widgets/fl_transaction_tile.dart';
+import '../../../fund_ledger/presentation/widgets/fl_utilize_form.dart';
 
-/// Dashboard screen — home screen of PAMZ Hisab.
-/// Shows responsive summary metric cards, quick action buttons, and recent activity feed.
+/// Dashboard screen for PAMZ Fund Responsibility Ledger.
+/// Shows global metrics, quick action modals, and recent transaction activity.
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final summaryAsync = ref.watch(flDashboardSummaryProvider);
+
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          _buildAppBar(context),
-          SliverPadding(
-            padding: EdgeInsets.all(AppSpacing.lg.w),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _buildSummaryCards(context, ref),
-                SizedBox(height: AppSpacing.xl.h),
-                _buildQuickActions(context),
-                SizedBox(height: AppSpacing.xl.h),
-                const SectionHeader(title: 'Recent Activity'),
-                SizedBox(height: AppSpacing.sm.h),
-                _buildRecentActivity(context, ref),
-              ]),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(flDashboardSummaryProvider);
+        },
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            _buildAppBar(context),
+            SliverPadding(
+              padding: EdgeInsets.all(AppSpacing.md.w),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  summaryAsync.when(
+                    loading: () => SizedBox(
+                      height: 180.h,
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                    error: (e, _) => Center(
+                      child: Text('Failed to load dashboard: $e'),
+                    ),
+                    data: (summary) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildHeadlineCard(context, summary.availableAmount),
+                        SizedBox(height: AppSpacing.md.h),
+                        _buildMetricCards(context, summary),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: AppSpacing.lg.h),
+                  _buildQuickActions(context, ref),
+                  SizedBox(height: AppSpacing.xl.h),
+                  _buildRecentActivityHeader(context),
+                  SizedBox(height: AppSpacing.sm.h),
+                  summaryAsync.when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                    data: (summary) => _buildRecentActivity(context, summary, ref),
+                  ),
+                  SizedBox(height: AppSpacing.xxl.h),
+                ]),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -57,7 +87,7 @@ class DashboardScreen extends ConsumerWidget {
             : 'Good Evening';
 
     return SliverAppBar(
-      expandedHeight: 120.h,
+      expandedHeight: 110.h,
       pinned: true,
       flexibleSpace: FlexibleSpaceBar(
         titlePadding: EdgeInsets.only(
@@ -71,12 +101,12 @@ class DashboardScreen extends ConsumerWidget {
             Text(
               '$greeting • ${AppDateUtils.toDisplay(now)}',
               style: AppTextStyles.caption.copyWith(
-                color: AppColors.onPrimary.withValues(alpha: 0.8),
+                color: AppColors.onPrimary.withAlpha(200),
                 fontSize: 11.sp,
               ),
             ),
             Text(
-              'PAMZ Hisab',
+              'PAMZ Fund Responsibility Ledger',
               style: AppTextStyles.h2.copyWith(
                 color: AppColors.onPrimary,
                 fontWeight: FontWeight.w700,
@@ -97,324 +127,251 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSummaryCards(BuildContext context, WidgetRef ref) {
-    final now = DateTime.now();
-    final monthlyExpenseAsync = ref.watch(currentMonthExpenseProvider);
-    final monthlyIncomeAsync = ref.watch(currentMonthIncomeProvider);
-    final reportAsync = ref.watch(analyticsReportProvider);
+  Widget _buildHeadlineCard(BuildContext context, double availableAmount) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final isPositive = availableAmount >= 0;
 
-    final expenseVal = monthlyExpenseAsync.valueOrNull ?? 0.0;
-    final incomeVal = monthlyIncomeAsync.valueOrNull ?? 0.0;
-    final netSavings = incomeVal - expenseVal;
-    final report = reportAsync.valueOrNull;
-    final udharLent = report?.summary.totalUdharLent ?? 0.0;
-    final udharCollected = report?.summary.totalUdharCollected ?? 0.0;
-    final netUdharReceivable = report?.summary.netUdharReceivable ?? (udharLent - udharCollected);
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= AppConstants.tabletBreakpoint;
-        final crossAxisCount = isWide ? 4 : 2;
-        final childAspectRatio = isWide ? 1.45 : 1.35;
-
-        return GridView.count(
-          crossAxisCount: crossAxisCount,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: AppSpacing.md.w,
-          mainAxisSpacing: AppSpacing.md.h,
-          childAspectRatio: childAspectRatio,
-          children: [
-            _SummaryCard(
-              title: 'Total Income',
-              subtitle: 'This month',
-              icon: Icons.trending_up_rounded,
-              iconColor: AppColors.credit,
-              valueColor: AppColors.credit,
-              asyncValue: incomeVal,
-            ),
-            _SummaryCard(
-              title: 'Total Expense',
-              subtitle: 'This month',
-              icon: Icons.trending_down_rounded,
-              iconColor: AppColors.debit,
-              valueColor: AppColors.debit,
-              asyncValue: expenseVal,
-            ),
-            _SummaryCard(
-              title: 'Net Savings',
-              subtitle: AppDateUtils.toMonthYear(now),
-              icon: Icons.account_balance_wallet_rounded,
-              iconColor: netSavings >= 0 ? AppColors.credit : AppColors.debit,
-              valueColor: netSavings >= 0 ? AppColors.credit : AppColors.debit,
-              asyncValue: netSavings,
-            ),
-            _SummaryCard(
-              title: 'Udhar Lent / Recovered',
-              subtitle: 'Net Rec: ${CurrencyFormatter.formatIndian(netUdharReceivable)}',
-              customValueWidget: Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: CurrencyFormatter.formatIndian(udharLent),
-                      style: AppTextStyles.amountLarge.copyWith(
-                        color: AppColors.debit,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    TextSpan(
-                      text: ' / ',
-                      style: AppTextStyles.amountLarge.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    TextSpan(
-                      text: CurrencyFormatter.formatIndian(udharCollected),
-                      style: AppTextStyles.amountLarge.copyWith(
-                        color: AppColors.credit,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              icon: Icons.handshake_outlined,
-              iconColor: AppColors.primary,
-              valueColor: AppColors.primary,
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildQuickActions(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Row(
-          children: [
-            Expanded(
-              child: AppButton(
-                label: '+ New Udhar',
-                icon: Icons.handshake_outlined,
-                isFullWidth: true,
-                onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    builder: (_) => const DirectUdharFormSheet(),
-                  );
-                },
-              ),
-            ),
-            SizedBox(width: AppSpacing.md.w),
-            Expanded(
-              child: AppButton(
-                label: '+ Expense',
-                icon: Icons.receipt_long_outlined,
-                variant: AppButtonVariant.secondary,
-                isFullWidth: true,
-                onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    builder: (_) => const TransactionFormSheet(initialType: 'expense'),
-                  );
-                },
-              ),
-            ),
-            SizedBox(width: AppSpacing.md.w),
-            Expanded(
-              child: AppButton(
-                label: '+ Income',
-                icon: Icons.add_circle_outline_rounded,
-                variant: AppButtonVariant.secondary,
-                isFullWidth: true,
-                onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    builder: (_) => const TransactionFormSheet(initialType: 'income'),
-                  );
-                },
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildRecentActivity(BuildContext context, WidgetRef ref) {
-    final recentTxnsAsync = ref.watch(allTransactionsProvider);
-
-    return recentTxnsAsync.when(
-      loading: () => const AppLoader(message: 'Loading recent transactions...'),
-      error: (err, _) => AppErrorView(
-        message: err.toString(),
-        onRetry: () => ref.invalidate(allTransactionsProvider),
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg.r),
+        side: BorderSide(
+          color: isDark ? AppColors.darkOutline : AppColors.outline,
+          width: 1,
+        ),
       ),
-      data: (transactions) {
-        if (transactions.isEmpty) {
-          return AppEmptyState(
-            title: 'No recent activity',
-            subtitle: 'Record your first income, expense, or Udhar loan above',
-            icon: Icons.receipt_outlined,
-            actionLabel: 'Add Expense',
-            onAction: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                builder: (_) => const TransactionFormSheet(initialType: 'expense'),
-              );
-            },
-          );
-        }
-
-        final recentList = transactions.take(5).toList();
-        final currencyFormat = NumberFormat.currency(
-          locale: 'en_IN',
-          symbol: '₹',
-          decimalDigits: 0,
-        );
-
-        return AppCard(
-          padding: EdgeInsets.zero,
-          child: ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: recentList.length,
-            separatorBuilder: (_, __) => Divider(
-              height: 1,
-              color: Theme.of(context).dividerColor,
-              indent: AppSpacing.lg.w + 40.w,
-            ),
-            itemBuilder: (context, index) {
-              final txn = recentList[index];
-              final isIncome = txn.isIncome;
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: isIncome
-                      ? AppColors.creditLight
-                      : AppColors.debitLight,
-                  child: Text(
-                    txn.categoryIcon ?? (isIncome ? '💰' : '🛒'),
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                ),
-                title: Text(
-                  txn.categoryName ?? (isIncome ? 'Income' : 'Expense'),
-                  style: AppTextStyles.bodyMedium.copyWith(
+      color: isDark ? AppColors.darkCardBackground : AppColors.cardBackground,
+      child: Padding(
+        padding: EdgeInsets.all(AppSpacing.lg.r),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'TOTAL AVAILABLE FUND RESPONSIBILITY',
+                  style: AppTextStyles.label.copyWith(
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                    letterSpacing: 0.8,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                subtitle: Text(
-                  [
-                    DateFormat('dd MMM yyyy').format(txn.transactionDate),
-                    if (txn.accountName != null) txn.accountName,
-                    if (txn.notes != null && txn.notes!.isNotEmpty) txn.notes,
-                  ].whereType<String>().join(' • '),
-                  style: AppTextStyles.caption,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Icon(
+                  Icons.account_balance_wallet_rounded,
+                  color: isPositive ? AppColors.credit : AppColors.debit,
+                  size: 24.r,
                 ),
-                trailing: Text(
-                  '${isIncome ? '+' : '-'}${currencyFormat.format(txn.amount)}',
-                  style: AppTextStyles.amount.copyWith(
-                    fontSize: 15.sp,
-                    color: isIncome ? AppColors.credit : AppColors.debit,
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
+              ],
+            ),
+            SizedBox(height: 6.h),
+            Text(
+              CurrencyFormatter.formatIndian(availableAmount),
+              style: AppTextStyles.display.copyWith(
+                color: isPositive ? AppColors.credit : AppColors.debit,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            SizedBox(height: 4.h),
+            Text(
+              'Total Available = Total Received - Total Returned',
+              style: AppTextStyles.caption.copyWith(
+                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
-}
 
-/// Summary card widget for dashboard metrics.
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.iconColor,
-    required this.valueColor,
-    this.asyncValue,
-    this.customValueWidget,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color iconColor;
-  final Color valueColor;
-  final double? asyncValue;
-  final Widget? customValueWidget;
-
-  @override
-  Widget build(BuildContext context) {
-    final amount = asyncValue ?? 0.0;
-    final display = CurrencyFormatter.formatIndian(amount);
-
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildMetricCards(BuildContext context, FLDashboardSummary summary) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: EdgeInsets.all(AppSpacing.sm.w),
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm.r),
-                ),
-                child: Icon(icon, size: 28.r, color: iconColor),
-              ),
-            ],
-          ),
-          const Spacer(),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: customValueWidget ??
-                Text(
-                  display,
-                  style: AppTextStyles.amountLarge.copyWith(
-                    color: valueColor,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-          ),
-          SizedBox(height: 2.h),
-          Text(
-            title,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w600,
-              fontSize: 14.sp,
+          Expanded(
+            child: FLSummaryCard(
+              label: 'Received',
+              amount: summary.totalReceived,
+              icon: Icons.arrow_downward_rounded,
+              color: AppColors.credit,
+              subtitle: 'All contacts',
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
-          Text(
-            subtitle,
-            style: AppTextStyles.caption.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontSize: 12.sp,
+          SizedBox(width: 8.w),
+          Expanded(
+            child: FLSummaryCard(
+              label: 'Utilized',
+              amount: summary.totalUtilized,
+              icon: Icons.shopping_bag_outlined,
+              color: AppColors.info,
+              subtitle: 'Allocated',
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          ),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: FLSummaryCard(
+              label: 'Returned',
+              amount: summary.totalReturned,
+              icon: Icons.arrow_upward_rounded,
+              color: AppColors.debit,
+              subtitle: 'Returned',
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildQuickActions(BuildContext context, WidgetRef ref) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Quick Actions',
+          style: AppTextStyles.h3,
+        ),
+        SizedBox(height: 10.h),
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                icon: const Icon(Icons.arrow_downward_rounded, size: 18),
+                label: const Text('Receive'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.credit,
+                  foregroundColor: AppColors.onPrimary,
+                  padding: EdgeInsets.symmetric(vertical: 18.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                ),
+                onPressed: () => FLReceiveForm.show(
+                  context,
+                  onSuccess: () => ref.invalidate(flDashboardSummaryProvider),
+                ),
+              ),
+            ),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: FilledButton.icon(
+                icon: const Icon(Icons.shopping_bag_outlined, size: 18),
+                label: const Text('Utilize'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.info,
+                  foregroundColor: AppColors.onPrimary,
+                  padding: EdgeInsets.symmetric(vertical: 18.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                ),
+                onPressed: () => FLUtilizeForm.show(
+                  context,
+                  onSuccess: () => ref.invalidate(flDashboardSummaryProvider),
+                ),
+              ),
+            ),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: FilledButton.icon(
+                icon: const Icon(Icons.arrow_upward_rounded, size: 18),
+                label: const Text('Return'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.debit,
+                  foregroundColor: AppColors.onPrimary,
+                  padding: EdgeInsets.symmetric(vertical: 18.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                ),
+                onPressed: () => FLReturnForm.show(
+                  context,
+                  onSuccess: () => ref.invalidate(flDashboardSummaryProvider),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecentActivityHeader(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'Recent Activity',
+          style: AppTextStyles.h3.copyWith(
+            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+          ),
+        ),
+        TextButton(
+          onPressed: () => context.goNamed(RouteNames.reports),
+          child: const Text('View All'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecentActivity(BuildContext context, FLDashboardSummary summary, WidgetRef ref) {
+    final recent = summary.recentTransactions;
+    if (recent.isEmpty) {
+      return Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg.r),
+          side: const BorderSide(color: AppColors.outline, width: 0.8),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(AppSpacing.xl.r),
+          child: Center(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.receipt_long_outlined,
+                  size: 48.r,
+                  color: AppColors.textDisabled,
+                ),
+                SizedBox(height: 8.h),
+                Text(
+                  'No transactions recorded yet',
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                TextButton.icon(
+                  icon: const Icon(Icons.person_add_alt),
+                  label: const Text('Add Contact to Get Started'),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const FLContactFormScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: recent.length,
+      itemBuilder: (context, index) {
+        final item = recent[index];
+        return FLTransactionTile(transaction: item.transaction);
+      },
     );
   }
 }

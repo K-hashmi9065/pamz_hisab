@@ -2,9 +2,6 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/db/hive/hive_registrar.dart';
 import '../../../../core/utils/app_date_utils.dart';
-import '../../../direct_udhar/data/models/direct_udhar_models.dart';
-import '../../../direct_udhar/domain/entities/direct_udhar_loan.dart';
-import '../../../direct_udhar/domain/services/interest_calculator.dart';
 import '../models/contact_model.dart';
 import 'contact_datasource.dart';
 
@@ -122,49 +119,8 @@ class ContactHiveDataSource implements ContactDataSource {
 
   @override
   Future<double> getTotalBalance(String contactId) async {
-    final loanBox = HiveRegistrar.directUdharBox;
-    final repBox = HiveRegistrar.repaymentsBox;
-    final now = DateTime.now();
-    double net = 0.0;
-
-    for (final key in loanBox.keys) {
-      final data = loanBox.get(key);
-      if (data is Map) {
-        final map = Map<String, dynamic>.from(data);
-        final isDeleted = (map['is_deleted'] as int? ?? 0) == 1;
-        final isClosed = map['status'] == 'closed';
-        if (!isDeleted && !isClosed && map['contact_id'] == contactId) {
-          final loan = DirectUdharLoanModel.fromMap(map).toEntity();
-
-          // Fetch repayments for this loan from Hive
-          final List<Repayment> repayments = [];
-          for (final repKey in repBox.keys) {
-            final repData = repBox.get(repKey);
-            if (repData is Map) {
-              final repMap = Map<String, dynamic>.from(repData);
-              final repDeleted = (repMap['is_deleted'] as int? ?? 0) == 1;
-              if (!repDeleted &&
-                  repMap['source_type'] == 'direct_udhar' &&
-                  repMap['source_id'] == loan.id) {
-                repayments.add(RepaymentModel.fromMap(repMap).toEntity());
-              }
-            }
-          }
-
-          final summary = InterestCalculator.calculateSummary(
-            loan: loan,
-            repayments: repayments,
-            asOfDate: now,
-          );
-
-          if (loan.direction == LoanDirection.lent) {
-            net += summary.totalOutstanding;
-          } else {
-            net -= summary.totalOutstanding;
-          }
-        }
-      }
-    }
-    return net;
+    // Udhar Khata loan calculations have been retired. Balance is now
+    // tracked exclusively through the Fund Ledger feature.
+    return 0.0;
   }
 }

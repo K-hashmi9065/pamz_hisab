@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pamz_khata/core/db/hive/hive_registrar.dart';
 import 'package:pamz_khata/core/db/storage_config.dart';
+import 'package:pamz_khata/feature/notifications/presentation/screens/notification_templates_screen.dart';
+import 'package:pamz_khata/feature/settings/presentation/screens/audit_log_screen.dart';
+import 'package:pamz_khata/feature/settings/presentation/screens/category_config_screen.dart';
+import 'package:pamz_khata/feature/settings/presentation/screens/payment_modes_screen.dart';
 import 'package:pamz_khata/feature/settings/presentation/screens/settings_screen.dart';
 
 import '../../test_helpers/pump_app.dart';
@@ -42,11 +46,11 @@ void main() {
 
     expect(find.text('Choose Theme'), findsOneWidget);
     expect(find.text('Dark Mode'), findsOneWidget);
-    expect(find.text('Light Mode'), findsOneWidget);
+    expect(find.text('Light Mode'), findsWidgets);
     expect(find.text('System Default'), findsOneWidget);
 
     // Select Dark Mode
-    await tester.tap(find.text('Dark Mode'));
+    await tester.tap(find.text('Dark Mode').last);
     await tester.pumpAndSettle();
 
     expect(find.text('Choose Theme'), findsNothing);
@@ -55,7 +59,7 @@ void main() {
     // Open again and select Light Mode
     await tester.tap(find.text('Theme Mode'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Light Mode'));
+    await tester.tap(find.text('Light Mode').last);
     await tester.pumpAndSettle();
 
     expect(find.text('Light Mode'), findsOneWidget);
@@ -184,5 +188,77 @@ void main() {
     final biometricSwitch = find.byType(Switch).first;
     await tester.tap(biometricSwitch);
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('SettingsScreen navigates to CategoryConfigScreen', (tester) async {
+    tester.view.physicalSize = const Size(1194, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await pumpApp(
+      tester,
+      const SettingsScreen(),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.text('Categories'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(CategoryConfigScreen), findsOneWidget);
+  });
+
+  testWidgets('SettingsScreen navigates to PaymentModesScreen', (tester) async {
+    tester.view.physicalSize = const Size(1194, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await pumpApp(
+      tester,
+      const SettingsScreen(),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.text('Payment Modes'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(PaymentModesScreen), findsOneWidget);
+  });
+
+  testWidgets('SettingsScreen navigates to NotificationTemplatesScreen', (tester) async {
+    tester.view.physicalSize = const Size(1194, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await pumpApp(
+      tester,
+      const SettingsScreen(),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.text('Message Templates'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(NotificationTemplatesScreen), findsOneWidget);
+  });
+
+  testWidgets('SettingsScreen navigates to AuditLogScreen', (tester) async {
+    tester.view.physicalSize = const Size(1194, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await pumpApp(
+      tester,
+      const SettingsScreen(),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.text('Audit Logs'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(AuditLogScreen), findsOneWidget);
   });
 }

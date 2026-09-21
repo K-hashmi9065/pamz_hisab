@@ -12,7 +12,7 @@ import '../../../../shared/widgets/app_bar_widgets.dart';
 import '../../../../shared/widgets/app_states.dart';
 import '../../../../shared/widgets/ledger_list_tile.dart';
 import '../../domain/entities/contact.dart';
-import '../../../direct_udhar/presentation/widgets/opening_balance_form_sheet.dart';
+
 import '../providers/contact_providers.dart';
 import 'contact_detail_screen.dart';
 import 'contact_form_screen.dart';
@@ -418,11 +418,8 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
   }
 
   void _openOpeningBalanceForm() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => const OpeningBalanceFormSheet(),
-    );
+    // Opening Balance workflow has been retired.
+    // This action is no longer available in the Contacts feature.
   }
 
   void _openNewContactForm() {

@@ -6,7 +6,7 @@ import 'package:pamz_khata/core/db/storage_config.dart';
 import 'package:pamz_khata/feature/contacts/data/datasources/contact_sqlite_datasource.dart';
 import 'package:pamz_khata/feature/contacts/data/models/contact_model.dart';
 import 'package:pamz_khata/feature/contacts/domain/entities/contact.dart';
-import 'package:pamz_khata/feature/direct_udhar/data/models/direct_udhar_models.dart';
+
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
@@ -466,34 +466,11 @@ void main() {
       expect(fetchedUpdated!.name, 'Amit Kumar Patel');
       expect(fetchedUpdated.creditLimit, 75000);
 
-      // Add direct udhar loan & repayment to verify balance calculation
-      final loanModel = DirectUdharLoanModel(
-        id: 'loan_1',
-        contactId: 'c_buyer_1',
-        direction: 'lent',
-        principalAmount: 10000,
-        interestType: 'interest_free',
-        status: 'partially_paid',
-        outstandingBalance: 10000,
-        createdAt: DateTime(2026, 1, 1).toIso8601String(),
-        updatedAt: DateTime(2026, 1, 1).toIso8601String(),
-      );
-      await inMemoryDb.insert('direct_udhar_loans', loanModel.toMap());
-
-      final repModel = RepaymentModel(
-        id: 'rep_1',
-        sourceType: 'direct_udhar',
-        sourceId: 'loan_1',
-        amount: 3000,
-        paidAt: DateTime(2026, 1, 15).toIso8601String(),
-        createdAt: DateTime(2026, 1, 15).toIso8601String(),
-      );
-      await inMemoryDb.insert('repayments', repModel.toMap());
-
+      // getTotalBalance returns 0.0 since Direct Udhar loan calculations are retired
       final balance = await dataSource.getTotalBalance('c_buyer_1');
-      expect(balance, equals(7000.0)); // 10000 - 3000
+      expect(balance, equals(0.0));
 
-      // Balance for empty contact returns 0.0
+      // Balance for empty contact also returns 0.0
       expect(await dataSource.getTotalBalance('c_supp_1'), equals(0.0));
 
       // Soft delete

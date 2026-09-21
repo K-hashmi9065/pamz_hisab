@@ -68,6 +68,8 @@ class AppDatabase {
       await _createPaymentModes(txn);
       await _createMonthlySummary(txn);
       await _createAuditLog(txn);
+      await _createFLContacts(txn);
+      await _createFLTransactions(txn);
       await _seedPaymentModes(txn);
       await _seedCategories(txn);
       await _seedAccounts(txn);
@@ -101,6 +103,14 @@ class AppDatabase {
         CREATE UNIQUE INDEX idx_budget_category_month
           ON budgets(category_id, month) WHERE is_deleted = 0
       ''');
+    }
+
+    if (oldVersion < 3) {
+      // Add Fund Ledger tables — new feature, no destructive migration of old data
+      await db.transaction((txn) async {
+        await _createFLContacts(txn);
+        await _createFLTransactions(txn);
+      });
     }
   }
 
@@ -321,9 +331,64 @@ class AppDatabase {
     ''');
   }
 
+
+  // ─────────────────────────────────────────────
+  // Fund Ledger Tables (Schema §2.1–2.2)
+  // ─────────────────────────────────────────────
+
+  Future<void> _createFLContacts(Transaction txn) async {
+    await txn.execute('''
+      CREATE TABLE IF NOT EXISTS fl_contacts (
+        id             TEXT PRIMARY KEY,
+        name           TEXT NOT NULL,
+        mobile_number  TEXT NOT NULL,
+        aadhaar_number TEXT,
+        project        TEXT,
+        created_at     TEXT NOT NULL,
+        updated_at     TEXT NOT NULL,
+        is_deleted     INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await txn.execute('''
+      CREATE INDEX IF NOT EXISTS idx_fl_contacts_name
+        ON fl_contacts(name)
+    ''');
+  }
+
+  Future<void> _createFLTransactions(Transaction txn) async {
+    await txn.execute('''
+      CREATE TABLE IF NOT EXISTS fl_transactions (
+        id                TEXT PRIMARY KEY,
+        contact_id        TEXT NOT NULL REFERENCES fl_contacts(id),
+        type              TEXT NOT NULL
+                            CHECK(type IN ('received','utilized','returned')),
+        amount            REAL NOT NULL,
+        txn_date          TEXT NOT NULL,
+        txn_time          TEXT,
+        payment_mode      TEXT,
+        payment_reference TEXT,
+        title             TEXT,
+        description       TEXT,
+        note              TEXT,
+        created_at        TEXT NOT NULL,
+        updated_at        TEXT NOT NULL,
+        is_deleted        INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await txn.execute('''
+      CREATE INDEX IF NOT EXISTS idx_fl_txn_contact_date
+        ON fl_transactions(contact_id, txn_date DESC)
+    ''');
+    await txn.execute('''
+      CREATE INDEX IF NOT EXISTS idx_fl_txn_type
+        ON fl_transactions(type)
+    ''');
+  }
+
   // ─────────────────────────────────────────────
   // Seed Data (Kishanganj Presets)
   // ─────────────────────────────────────────────
+
 
   Future<void> _seedPaymentModes(Transaction txn) async {
     for (final mode in AppConstants.defaultPaymentModes) {

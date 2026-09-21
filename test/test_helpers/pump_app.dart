@@ -4,6 +4,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import 'mock_google_fonts.dart';
+
 /// Helper to pump any widget wrapped in ProviderScope + ScreenUtil + MaterialApp.
 /// Use [overrides] to inject mock providers.
 Future<void> pumpApp(
@@ -11,6 +13,7 @@ Future<void> pumpApp(
   Widget child, {
   List<Override> overrides = const [],
 }) async {
+  setUpMockGoogleFonts();
   await tester.pumpWidget(
     ProviderScope(
       overrides: overrides,
@@ -34,6 +37,7 @@ Future<void> pumpAppWithRouter(
   List<Override> overrides = const [],
   String initialLocation = '/test',
 }) async {
+  setUpMockGoogleFonts();
   final subPath = initialLocation.startsWith('/')
       ? initialLocation.substring(1)
       : initialLocation;

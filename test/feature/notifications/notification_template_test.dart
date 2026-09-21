@@ -11,9 +11,15 @@ import 'package:pamz_khata/feature/notifications/presentation/providers/template
 import 'package:pamz_khata/feature/notifications/presentation/screens/notification_templates_screen.dart';
 import 'package:pamz_khata/shared/widgets/app_button.dart';
 
+import '../../test_helpers/mock_google_fonts.dart';
+import '../../test_helpers/mocks.dart';
 import '../../test_helpers/pump_app.dart';
 
 void main() {
+  setUpAll(() {
+    setUpMockGoogleFonts();
+  });
+
   group('Notification Template Unit & Widget Tests', () {
     late Directory tempDir;
     late NotificationTemplateRepository repository;
@@ -195,14 +201,21 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
 
+      final initialTemplate = NotificationTemplateRepository.defaultTemplates
+          .firstWhere((t) => t.id == 'loan_voucher')
+          .copyWith(templateEnglish: 'CUSTOM MODIFIED TEMPLATE');
+      final fakeRepo = FakeNotificationTemplateRepository(
+        initialTemplates: [
+          initialTemplate,
+          ...NotificationTemplateRepository.defaultTemplates.where((t) => t.id != 'loan_voucher'),
+        ],
+      );
+
       await pumpApp(
         tester,
         const NotificationTemplatesScreen(),
         overrides: [
-          notificationTemplateRepositoryProvider.overrideWithValue(repository),
-          notificationTemplatesProvider.overrideWith(
-            (ref) async => NotificationTemplateRepository.defaultTemplates,
-          ),
+          notificationTemplateRepositoryProvider.overrideWithValue(fakeRepo),
         ],
       );
       await tester.pump();
@@ -218,26 +231,19 @@ void main() {
 
       // Confirm reset dialog
       final confirmBtn = find.widgetWithText(AppButton, 'Reset');
+      await tester.tap(confirmBtn);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       final expectedDefault = NotificationTemplateRepository.defaultTemplates
           .firstWhere((t) => t.id == 'loan_voucher')
           .templateEnglish;
 
-      late NotificationTemplate defaultTemplate;
-      await tester.runAsync(() async {
-        await tester.tap(confirmBtn);
-
-        // Allow ConfirmationDialog dismissal and resetToDefaults writes to complete on host event loop
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-
-        defaultTemplate = await repository.getTemplate('loan_voucher');
-      });
-
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+      final restoredTemplate = await fakeRepo.getTemplate('loan_voucher');
 
       expect(find.text('Reset All Templates'), findsNothing);
-      expect(defaultTemplate.templateEnglish, expectedDefault);
+      expect(fakeRepo.resetToDefaultsCalled, isTrue);
+      expect(restoredTemplate.templateEnglish, expectedDefault);
       expect(find.byType(NotificationTemplatesScreen), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());

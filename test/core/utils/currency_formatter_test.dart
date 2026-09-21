@@ -52,24 +52,24 @@ void main() {
   });
 
   group('CurrencyFormatter.formatCompact', () {
-    test('formats amounts under 1K without abbreviation', () {
+    test('formats amounts under 1,000 without grouping', () {
       expect(CurrencyFormatter.formatCompact(999), '₹999');
     });
 
-    test('formats 1500 as 1.5K', () {
-      expect(CurrencyFormatter.formatCompact(1500), '₹1.5K');
+    test('formats 1500 with Indian grouping', () {
+      expect(CurrencyFormatter.formatCompact(1500), '₹1,500');
     });
 
-    test('formats 150000 as 1.5L', () {
-      expect(CurrencyFormatter.formatCompact(150000), '₹1.5L');
+    test('formats 150000 with Indian grouping', () {
+      expect(CurrencyFormatter.formatCompact(150000), '₹1,50,000');
     });
 
-    test('formats 15000000 as 1.5Cr', () {
-      expect(CurrencyFormatter.formatCompact(15000000), '₹1.5Cr');
+    test('formats 15000000 with Indian grouping', () {
+      expect(CurrencyFormatter.formatCompact(15000000), '₹1,50,00,000');
     });
 
-    test('formats negative compact', () {
-      expect(CurrencyFormatter.formatCompact(-150000), '-₹1.5L');
+    test('formats negative amount', () {
+      expect(CurrencyFormatter.formatCompact(-150000), '-₹1,50,000');
     });
   });
 

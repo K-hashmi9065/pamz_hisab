@@ -8,7 +8,7 @@ class AppConstants {
 
   // --- Database ---
   static const String dbName = 'pamz_hisab.db';
-  static const int dbVersion = 2;
+  static const int dbVersion = 3;
 
   // --- Hive Box Names ---
   static const String settingsBox = 'settings_box';
@@ -25,6 +25,10 @@ class AppConstants {
   static const String monthlySummaryBox = 'monthly_summary_box';
   static const String budgetsBox = 'budgets_box';
   static const String auditLogBox = 'audit_log_box';
+
+  // --- Fund Ledger Hive Boxes ---
+  static const String flContactsBox = 'fl_contacts_box';
+  static const String flTransactionsBox = 'fl_transactions_box';
 
   // --- Secure Storage Keys ---
   static const String dbEncryptionKeyStorageKey = 'pamz_db_enc_key';

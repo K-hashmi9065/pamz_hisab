@@ -3,9 +3,6 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/db/sqlite/database_helper.dart';
 import '../../../../core/utils/app_date_utils.dart';
-import '../../../direct_udhar/data/models/direct_udhar_models.dart';
-import '../../../direct_udhar/domain/entities/direct_udhar_loan.dart';
-import '../../../direct_udhar/domain/services/interest_calculator.dart';
 import '../models/contact_model.dart';
 import 'contact_datasource.dart';
 
@@ -114,43 +111,8 @@ class ContactSqliteDataSource implements ContactDataSource {
 
   @override
   Future<double> getTotalBalance(String contactId) async {
-    // Fetch active (non-deleted, non-closed) loans for the contact
-    final loanRows = await _db.query(
-      'direct_udhar_loans',
-      where: 'contact_id = ? AND is_deleted = 0 AND status != ?',
-      whereArgs: [contactId, 'closed'],
-    );
-
-    if (loanRows.isEmpty) return 0.0;
-
-    final now = DateTime.now();
-    double net = 0.0;
-
-    for (final row in loanRows) {
-      final loan = DirectUdharLoanModel.fromMap(row).toEntity();
-
-      // Fetch active repayments for this loan
-      final repRows = await _db.query(
-        'repayments',
-        where: 'source_type = ? AND source_id = ? AND is_deleted = 0',
-        whereArgs: ['direct_udhar', loan.id],
-      );
-      final repayments =
-          repRows.map((r) => RepaymentModel.fromMap(r).toEntity()).toList();
-
-      final summary = InterestCalculator.calculateSummary(
-        loan: loan,
-        repayments: repayments,
-        asOfDate: now,
-      );
-
-      if (loan.direction == LoanDirection.lent) {
-        net += summary.totalOutstanding;
-      } else {
-        net -= summary.totalOutstanding;
-      }
-    }
-
-    return net;
+    // Udhar Khata loan calculations have been retired. Balance is now
+    // tracked exclusively through the Fund Ledger feature.
+    return 0.0;
   }
 }

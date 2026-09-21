@@ -28,14 +28,9 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
       path: RoutePaths.dashboard,
     ),
     _NavItem(
-      icon: Icons.handshake_rounded,
-      label: 'Udhar Khata',
-      path: RoutePaths.udharList,
-    ),
-    _NavItem(
-      icon: Icons.people_rounded,
-      label: 'Family',
-      path: RoutePaths.familyFinance,
+      icon: Icons.contacts_rounded,
+      label: 'Contacts',
+      path: RoutePaths.contacts,
     ),
     _NavItem(
       icon: Icons.bar_chart_rounded,

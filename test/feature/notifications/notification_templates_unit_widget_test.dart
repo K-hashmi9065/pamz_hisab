@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
 import 'package:pamz_khata/core/db/hive/hive_registrar.dart';
 import 'package:pamz_khata/core/db/storage_config.dart';
@@ -12,11 +11,12 @@ import 'package:pamz_khata/feature/notifications/presentation/providers/template
 import 'package:pamz_khata/feature/notifications/presentation/screens/notification_templates_screen.dart';
 import 'package:pamz_khata/shared/widgets/app_button.dart';
 
+import '../../test_helpers/mock_google_fonts.dart';
 import '../../test_helpers/pump_app.dart';
 
 void main() {
   setUpAll(() {
-    GoogleFonts.config.allowRuntimeFetching = false;
+    setUpMockGoogleFonts();
   });
 
   group('Notification Template Extended Unit & Widget Tests', () {

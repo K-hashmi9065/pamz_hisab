@@ -20,16 +20,16 @@ void main() {
               builder: (_, __) => const Scaffold(body: Text('Dashboard Content')),
             ),
             GoRoute(
-              path: RoutePaths.udharList,
-              builder: (_, __) => const Scaffold(body: Text('Udhar Khata Content')),
-            ),
-            GoRoute(
-              path: RoutePaths.familyFinance,
-              builder: (_, __) => const Scaffold(body: Text('Family Finance Content')),
+              path: RoutePaths.contacts,
+              builder: (_, __) => const Scaffold(body: Text('Contacts Content')),
             ),
             GoRoute(
               path: RoutePaths.reports,
               builder: (_, __) => const Scaffold(body: Text('Reports Content')),
+            ),
+            GoRoute(
+              path: RoutePaths.userGuide,
+              builder: (_, __) => const Scaffold(body: Text('User Guide Content')),
             ),
             GoRoute(
               path: RoutePaths.settings,
@@ -66,7 +66,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  group('AdaptiveShell Widget Tests (GAP-W02)', () {
+  group('AdaptiveShell Widget Tests (Fund Ledger 5-Tab Navigation)', () {
     testWidgets('1. Compact layout (< tabletBreakpoint): NavigationRail is collapsed without branding header', (tester) async {
       addTearDown(tester.view.resetPhysicalSize);
 
@@ -86,9 +86,9 @@ void main() {
 
       // Icon destinations remain accessible
       expect(find.byIcon(Icons.dashboard_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.handshake_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.home_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.contacts_rounded), findsOneWidget);
       expect(find.byIcon(Icons.bar_chart_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.menu_book_rounded), findsOneWidget);
       expect(find.byIcon(Icons.settings_rounded), findsOneWidget);
     });
 
@@ -108,9 +108,9 @@ void main() {
 
       // Navigation item labels are rendered
       expect(find.text('Dashboard'), findsOneWidget);
-      expect(find.text('Udhar Khata'), findsOneWidget);
-      expect(find.text('Family'), findsOneWidget);
+      expect(find.text('Contacts'), findsOneWidget);
       expect(find.text('Reports'), findsOneWidget);
+      expect(find.text('User Guide'), findsOneWidget);
       expect(find.text('Settings'), findsOneWidget);
 
       expect(find.text('Dashboard Content'), findsOneWidget);
@@ -124,24 +124,24 @@ void main() {
 
       expect(find.text('Dashboard Content'), findsOneWidget);
 
-      // Tap Udhar Khata tab
-      await tester.tap(find.text('Udhar Khata'));
+      // Tap Contacts tab
+      await tester.tap(find.text('Contacts'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Udhar Khata Content'), findsOneWidget);
+      expect(find.text('Contacts Content'), findsOneWidget);
       expect(find.text('Dashboard Content'), findsNothing);
-
-      // Tap Family tab
-      await tester.tap(find.text('Family'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Family Finance Content'), findsOneWidget);
 
       // Tap Reports tab
       await tester.tap(find.text('Reports'));
       await tester.pumpAndSettle();
 
       expect(find.text('Reports Content'), findsOneWidget);
+
+      // Tap User Guide tab
+      await tester.tap(find.text('User Guide'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('User Guide Content'), findsOneWidget);
 
       // Tap Settings tab
       await tester.tap(find.text('Settings'));

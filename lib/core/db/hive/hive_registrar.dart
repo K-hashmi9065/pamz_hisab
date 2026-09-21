@@ -45,6 +45,10 @@ class HiveRegistrar {
     await Hive.openBox<dynamic>(AppConstants.monthlySummaryBox);
     await Hive.openBox<dynamic>(AppConstants.budgetsBox);
     await Hive.openBox<dynamic>(AppConstants.auditLogBox);
+
+    // Fund Ledger boxes
+    await Hive.openBox<dynamic>(AppConstants.flContactsBox);
+    await Hive.openBox<dynamic>(AppConstants.flTransactionsBox);
   }
 
   static Future<void> _seedDefaults() async {
@@ -98,4 +102,8 @@ class HiveRegistrar {
   static Box<dynamic> get monthlySummaryBox => Hive.box<dynamic>(AppConstants.monthlySummaryBox);
   static Box<dynamic> get budgetsBox => Hive.box<dynamic>(AppConstants.budgetsBox);
   static Box<dynamic> get auditLogBox => Hive.box<dynamic>(AppConstants.auditLogBox);
+
+  // Fund Ledger boxes
+  static Box<dynamic> get flContactsBox => Hive.box<dynamic>(AppConstants.flContactsBox);
+  static Box<dynamic> get flTransactionsBox => Hive.box<dynamic>(AppConstants.flTransactionsBox);
 }

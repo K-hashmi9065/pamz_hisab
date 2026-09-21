@@ -12,6 +12,8 @@ import '../../../../shared/widgets/app_bar_widgets.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../contacts/domain/entities/contact.dart';
+import '../../../contacts/presentation/providers/contact_providers.dart';
+import '../../../contacts/presentation/services/contact_ledger_share_helper.dart';
 import '../../domain/entities/direct_udhar_loan.dart';
 import '../providers/direct_udhar_providers.dart';
 
@@ -402,11 +404,11 @@ class _RepaymentFormSheetState extends ConsumerState<RepaymentFormSheet> {
                   borderRadius: BorderRadius.circular(4.r),
                 ),
                 child: Text(
-                  loan.status.name.toUpperCase(),
+                  loan.status == LoanStatus.closed ? 'CLOSED' : 'OPEN',
                   style: TextStyle(
                     fontSize: 10.sp,
                     fontWeight: FontWeight.w700,
-                    color: loan.isOpen ? AppColors.primary : AppColors.credit,
+                    color: loan.status == LoanStatus.closed ? AppColors.credit : AppColors.primary,
                   ),
                 ),
               ),
@@ -507,11 +509,28 @@ class _RepaymentFormSheetState extends ConsumerState<RepaymentFormSheet> {
         );
 
     if (success && mounted) {
-      Navigator.pop(context);
-      AppSnackbar.showSuccess(
-        context,
-        'Repayment of ${CurrencyFormatter.formatIndian(_enteredAmount)} recorded successfully',
-      );
+      final contactId = widget.contact.id;
+      final contactRepo = ref.read(contactRepositoryProvider);
+      final directUdharRepo = ref.read(directUdharRepositoryProvider);
+      final shareService = ref.read(directUdharShareServiceProvider);
+
+      final parentCtx = Navigator.of(context).context;
+      Navigator.of(context).pop();
+
+      if (parentCtx.mounted) {
+        AppSnackbar.showSuccess(
+          parentCtx,
+          'Repayment of ${CurrencyFormatter.formatIndian(_enteredAmount)} recorded successfully',
+        );
+
+        await ContactLedgerShareHelper.showPostTransactionShareDialog(
+          context: parentCtx,
+          contactId: contactId,
+          contactRepository: contactRepo,
+          directUdharRepository: directUdharRepo,
+          shareService: shareService,
+        );
+      }
     }
   }
 }

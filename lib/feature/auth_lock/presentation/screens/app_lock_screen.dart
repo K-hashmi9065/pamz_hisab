@@ -36,9 +36,14 @@ class _AppLockScreenState extends ConsumerState<AppLockScreen> {
   }
 
   Future<void> _authenticate() async {
+    if (_isAuthenticating) return;
+
+    final lockNotifier = ref.read(appLockProvider.notifier);
+    final service = ref.read(biometricServiceProvider);
     final settings = ref.read(appSettingsProvider);
+
     if (!settings.biometricEnabled) {
-      ref.read(appLockProvider.notifier).unlock();
+      lockNotifier.unlock();
       if (mounted) context.goNamed(RouteNames.dashboard);
       return;
     }
@@ -47,41 +52,47 @@ class _AppLockScreenState extends ConsumerState<AppLockScreen> {
       _isAuthenticating = true;
       _errorMessage = null;
     });
-    ref.read(appLockProvider.notifier).setAuthenticating(true);
+    lockNotifier.setAuthenticating(true);
 
-    final service = ref.read(biometricServiceProvider);
-    final available = await service.isAvailable();
+    try {
+      final available = await service.isAvailable();
 
-    // On non-iOS / web or if biometrics not available, skip lock and navigate to dashboard
-    if (!available) {
-      ref.read(appLockProvider.notifier).setAuthenticating(false);
-      ref.read(appLockProvider.notifier).unlock();
-      if (mounted) {
+      // On non-iOS / web or if biometrics not available, skip lock and navigate to dashboard
+      if (!available) {
+        lockNotifier.unlock();
+        if (mounted) {
+          try {
+            context.goNamed(RouteNames.dashboard);
+          } catch (_) {}
+        }
+        return;
+      }
+
+      final success = await service.authenticate(
+        localizedReason: 'Please authenticate to open PAMZ Hisab',
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        lockNotifier.unlock();
         try {
           context.goNamed(RouteNames.dashboard);
         } catch (_) {}
+      } else {
+        setState(() => _errorMessage =
+            'Authentication failed. Please try again or use your passcode.');
       }
-      return;
-    }
-
-    final success = await service.authenticate(
-      localizedReason: 'Please authenticate to open PAMZ Hisab',
-    );
-
-    ref.read(appLockProvider.notifier).setAuthenticating(false);
-
-    if (!mounted) return;
-
-    setState(() => _isAuthenticating = false);
-
-    if (success) {
-      ref.read(appLockProvider.notifier).unlock();
-      try {
-        context.goNamed(RouteNames.dashboard);
-      } catch (_) {}
-    } else {
-      setState(() => _errorMessage =
-          'Authentication failed. Please try again or use your passcode.');
+    } catch (_) {
+      if (mounted) {
+        setState(() => _errorMessage =
+            'Authentication failed. Please try again.');
+      }
+    } finally {
+      lockNotifier.setAuthenticating(false);
+      if (mounted) {
+        setState(() => _isAuthenticating = false);
+      }
     }
   }
 

@@ -241,7 +241,8 @@ class _BudgetFormSheetState extends ConsumerState<BudgetFormSheet> {
                       hint: 'e.g. 80',
                       controller: _thresholdCtrl,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      prefix: const Icon(Icons.notifications_active_outlined),
+                      prefixIcon: const Icon(Icons.notifications_active_outlined),
+                      onChanged: (_) => setState(() {}),
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) {
                           return 'Please enter threshold percentage';
@@ -259,12 +260,45 @@ class _BudgetFormSheetState extends ConsumerState<BudgetFormSheet> {
                     // Quick Threshold Chips
                     Wrap(
                       spacing: 8.w,
+                      runSpacing: 6.h,
                       children: [50, 75, 80, 90, 100].map((percent) {
-                        return ActionChip(
-                          label: Text('$percent%'),
-                          onPressed: () {
-                            setState(() => _thresholdCtrl.text = '$percent');
-                          },
+                        final currentVal = double.tryParse(_thresholdCtrl.text.trim());
+                        final isSelected = currentVal != null && (currentVal - percent).abs() < 0.01;
+
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20.r),
+                            onTap: () {
+                              setState(() => _thresholdCtrl.text = '$percent');
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.primary.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(20.r),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.primary.withValues(alpha: 0.25),
+                                  width: isSelected ? 1.5 : 1.0,
+                                ),
+                              ),
+                              child: Text(
+                                '$percent%',
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ),
                         );
                       }).toList(),
                     ),

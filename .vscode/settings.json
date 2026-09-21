@@ -1,5 +1,6 @@
 {
       "editor.tabSize": 6,
-      "editor.cursorWidth": 1,
-      "editor.cursorHeight": 10
+      "editor.cursorWidth": 0,
+      "editor.cursorHeight": 0,
+      "terminal.integrated.cursorWidth": 0
 }

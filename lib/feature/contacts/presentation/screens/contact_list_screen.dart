@@ -74,23 +74,28 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
         title: 'Udhar Khata',
         actions: [
           IconButton(
+            key: const Key('openingBalanceButton'),
             icon: const Icon(Icons.account_balance_wallet_outlined),
             tooltip: 'Set Opening Balance',
             onPressed: () => _openOpeningBalanceForm(),
           ),
           IconButton(
+            key: const Key('newContactButton'),
             icon: const Icon(Icons.person_add_rounded),
             tooltip: 'New Contact',
             onPressed: _openNewContactForm,
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(130.h),
+          preferredSize: Size.fromHeight(
+            _searchQuery.isNotEmpty ? 62.h : 114.h,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildSegmentedControl(),
-              _buildSearchBar(),
+              _buildSearchBar(isWide: isWide),
+              if (_searchQuery.isEmpty)
+                _buildTabSwitcher(context),
             ],
           ),
         ),
@@ -106,11 +111,32 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
     );
   }
 
+  List<Contact> _getActiveContacts() {
+    if (_searchQuery.trim().isNotEmpty) {
+      return ref.watch(udharGlobalSearchProvider).valueOrNull ?? [];
+    }
+    if (_selectedTab == 2) {
+      return [];
+    }
+    final provider = _selectedTab == 0 ? buyerListProvider : supplierListProvider;
+    return ref.watch(provider).valueOrNull ?? [];
+  }
+
+  String? _getEffectiveContactId(List<Contact> activeContacts) {
+    if (_selectedContactId != null && activeContacts.any((c) => c.id == _selectedContactId)) {
+      return _selectedContactId;
+    }
+    return activeContacts.isNotEmpty ? activeContacts.first.id : null;
+  }
+
   Widget _buildDetailView(BuildContext context) {
-    if (_selectedContactId != null) {
+    final activeContacts = _getActiveContacts();
+    final effectiveId = _getEffectiveContactId(activeContacts);
+
+    if (effectiveId != null) {
       return ContactDetailScreen(
-        key: ValueKey(_selectedContactId),
-        contactId: _selectedContactId!,
+        key: ValueKey(effectiveId),
+        contactId: effectiveId,
         isMasterDetail: true,
         onDeleted: () {
           setState(() => _selectedContactId = null);
@@ -133,37 +159,123 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
     );
   }
 
-  Widget _buildSegmentedControl() {
+  Widget _buildTabSwitcher(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tabs = [
+      (
+        index: 0,
+        label: 'Buyers',
+        icon: Icons.people_rounded,
+        activeColor: AppColors.primary,
+        inactiveColor: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32),
+      ),
+      (
+        index: 1,
+        label: 'Suppliers',
+        icon: Icons.store_rounded,
+        activeColor: const Color(0xFF5E35B1),
+        inactiveColor: isDark ? const Color(0xFFB39DDB) : const Color(0xFF673AB7),
+      ),
+      (
+        index: 2,
+        label: 'Direct Cash',
+        icon: Icons.monetization_on_rounded,
+        activeColor: const Color(0xFFE65100),
+        inactiveColor: isDark ? const Color(0xFFFFB74D) : const Color(0xFFEF6C00),
+      ),
+    ];
+
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: AppSpacing.sm.h),
-      child: SegmentedButton<int>(
-        segments: const [
-          ButtonSegment(value: 0, label: Text('Buyers'), icon: Icon(Icons.people_rounded)),
-          ButtonSegment(value: 1, label: Text('Suppliers'), icon: Icon(Icons.store_rounded)),
-          ButtonSegment(value: 2, label: Text('Direct Cash'), icon: Icon(Icons.monetization_on_rounded)),
-        ],
-        selected: {_selectedTab},
-        onSelectionChanged: (selection) =>
-            setState(() {
-              _selectedTab = selection.first;
-              _selectedContactId = null;
-            }),
-        style: const ButtonStyle(
-          visualDensity: VisualDensity.comfortable,
+      padding: EdgeInsets.fromLTRB(AppSpacing.md.w, 0, AppSpacing.md.w, AppSpacing.sm.h),
+      child: Container(
+        height: 38.h,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkCardBackground : AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd.r),
+          border: Border.all(
+            color: isDark ? AppColors.darkOutline : AppColors.outline,
+          ),
+        ),
+        child: Row(
+          children: tabs.map((tab) {
+            final isSelected = _selectedTab == tab.index;
+            final itemColor = isSelected ? Colors.white : tab.inactiveColor;
+            final activeBgColor = tab.activeColor;
+
+            return Expanded(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd.r - 2),
+                onTap: () => setState(() {
+                  _selectedTab = tab.index;
+                  _selectedContactId = null;
+                }),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  curve: Curves.easeInOut,
+                  decoration: BoxDecoration(
+                    color: isSelected ? activeBgColor : Colors.transparent,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusMd.r - 2),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: activeBgColor.withValues(alpha: 0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          tab.icon,
+                          size: 15.r,
+                          color: itemColor,
+                        ),
+                        SizedBox(width: 5.w),
+                        Flexible(
+                          child: Text(
+                            tab.label,
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                              color: itemColor,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
         ),
       ),
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar({required bool isWide}) {
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          AppSpacing.lg.w, 0, AppSpacing.lg.w, AppSpacing.sm.h),
+          AppSpacing.md.w, AppSpacing.xs.h, AppSpacing.md.w, AppSpacing.xs.h),
       child: TextField(
+        key: const Key('udharSearchBar'),
         controller: _searchController,
-        onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+        onChanged: (v) {
+          setState(() => _searchQuery = v);
+          ref.read(udharGlobalSearchQueryProvider.notifier).state = v;
+        },
         decoration: InputDecoration(
           hintText: 'Search name or mobile...',
+          isDense: true,
+          contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
           prefixIcon: const Icon(Icons.search_rounded),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
@@ -171,16 +283,22 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
                   onPressed: () {
                     _searchController.clear();
                     setState(() => _searchQuery = '');
+                    ref.read(udharGlobalSearchQueryProvider.notifier).state = '';
                   },
                 )
               : null,
         ),
-        style: AppTextStyles.body,
+        style: AppTextStyles.bodyMedium,
       ),
     );
   }
 
   Widget _buildBody({required bool isWide}) {
+    // When global search is active (non-empty query), show unified results across Buyers & Suppliers
+    if (_searchQuery.trim().isNotEmpty) {
+      return _buildSearchResults(isWide: isWide);
+    }
+
     if (_selectedTab == 2) {
       return _buildDirectCashPlaceholder();
     }
@@ -196,15 +314,7 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
         onRetry: () => ref.invalidate(provider),
       ),
       data: (contacts) {
-        final filtered = _searchQuery.isEmpty
-            ? contacts
-            : contacts
-                .where((c) =>
-                    c.name.toLowerCase().contains(_searchQuery) ||
-                    c.mobileNumber.contains(_searchQuery))
-                .toList();
-
-        if (filtered.isEmpty) {
+        if (contacts.isEmpty) {
           return AppEmptyState(
             title: _selectedTab == 0 ? 'No buyers yet' : 'No suppliers yet',
             subtitle: 'Tap + to add your first contact',
@@ -214,19 +324,72 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
           );
         }
 
+        final effectiveId = isWide ? _getEffectiveContactId(contacts) : null;
+
         return ListView.separated(
           padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
-          itemCount: filtered.length,
+          itemCount: contacts.length,
           separatorBuilder: (_, __) => Divider(
             height: 1,
             indent: AppSpacing.lg.w + 48.w, // align with avatar
           ),
           itemBuilder: (_, i) {
-            final contact = filtered[i];
-            final isSelected = isWide && contact.id == _selectedContactId;
+            final contact = contacts[i];
+            final isSelected = isWide && contact.id == effectiveId;
             return _ContactRow(
               contact: contact,
               isSelected: isSelected,
+              onTap: () {
+                if (isWide) {
+                  setState(() => _selectedContactId = contact.id);
+                } else {
+                  context.goNamed(
+                    RouteNames.contactLedger,
+                    pathParameters: {'contactId': contact.id},
+                  );
+                }
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchResults({required bool isWide}) {
+    final searchResultsAsync = ref.watch(udharGlobalSearchProvider);
+
+    return searchResultsAsync.when(
+      loading: () => const AppLoader(message: 'Searching contacts...'),
+      error: (e, _) => AppErrorView(
+        message: e.toString(),
+        onRetry: () => ref.invalidate(allContactListProvider),
+      ),
+      data: (results) {
+        if (results.isEmpty) {
+          return AppEmptyState(
+            title: 'No matching records',
+            subtitle: 'No contacts matched "$_searchQuery"',
+            icon: Icons.person_search_rounded,
+          );
+        }
+
+        final effectiveId = isWide ? _getEffectiveContactId(results) : null;
+
+        return ListView.separated(
+          padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
+          itemCount: results.length,
+          separatorBuilder: (_, __) => Divider(
+            height: 1,
+            indent: AppSpacing.lg.w + 48.w,
+          ),
+          itemBuilder: (_, i) {
+            final contact = results[i];
+            final isSelected = isWide && contact.id == effectiveId;
+            return _ContactRow(
+              contact: contact,
+              isSelected: isSelected,
+              showTypeBadge: true,
               onTap: () {
                 if (isWide) {
                   setState(() => _selectedContactId = contact.id);
@@ -278,37 +441,44 @@ class _ContactRow extends ConsumerWidget {
     required this.contact,
     required this.onTap,
     this.isSelected = false,
+    this.showTypeBadge = false,
   });
 
   final Contact contact;
   final VoidCallback onTap;
   final bool isSelected;
+  final bool showTypeBadge;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final balanceAsync =
         ref.watch(contactTotalBalanceProvider(contact.id));
 
+    final typeLabel = contact.isBuyer ? 'Buyer' : 'Supplier';
+    final subtitleText = showTypeBadge
+        ? '$typeLabel • ${contact.mobileNumber}'
+        : contact.mobileNumber;
+
     final tile = balanceAsync.when(
       loading: () => LedgerListTile(
         name: contact.name,
         amount: 0,
         isCredit: true,
-        mobile: contact.mobileNumber,
+        mobile: subtitleText,
         onTap: onTap,
       ),
       error: (_, __) => LedgerListTile(
         name: contact.name,
         amount: 0,
         isCredit: true,
-        mobile: contact.mobileNumber,
+        mobile: subtitleText,
         onTap: onTap,
       ),
       data: (balance) => LedgerListTile(
         name: contact.name,
         amount: balance.abs(),
         isCredit: balance >= 0,
-        mobile: contact.mobileNumber,
+        mobile: subtitleText,
         onTap: onTap,
       ),
     );

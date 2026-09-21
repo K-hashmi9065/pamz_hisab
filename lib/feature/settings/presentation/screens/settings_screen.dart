@@ -276,17 +276,55 @@ class SettingsScreen extends ConsumerWidget {
             SizedBox(height: 8.h),
             Wrap(
               spacing: 8.w,
+              runSpacing: 8.h,
               children: ['₹', '\$', '€', '£', 'AED'].map((sym) {
                 final isSelected = currentSettings.currencySymbol == sym;
-                return ChoiceChip(
-                  label: Text(sym, style: const TextStyle(fontWeight: FontWeight.w600)),
-                  selected: isSelected,
-                  onSelected: (val) {
-                    if (val) {
+                return Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8.r),
+                    onTap: () {
                       ref.read(appSettingsProvider.notifier).setCurrencySymbol(sym);
                       Navigator.of(ctx).pop();
-                    }
-                  },
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primary
+                            : (Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey[800]
+                                : Colors.grey[100]),
+                        borderRadius: BorderRadius.circular(8.r),
+                        border: Border.all(
+                          color: isSelected ? AppColors.primary : Colors.grey.withValues(alpha: 0.35),
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isSelected) ...[
+                            Icon(Icons.check_rounded, size: 16.r, color: Colors.white),
+                            SizedBox(width: 4.w),
+                          ],
+                          Text(
+                            sym,
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                              color: isSelected
+                                  ? Colors.white
+                                  : (Theme.of(context).brightness == Brightness.dark
+                                      ? Colors.white
+                                      : AppColors.textPrimary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 );
               }).toList(),
             ),

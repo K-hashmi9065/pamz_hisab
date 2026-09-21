@@ -3,12 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/db/sqlite/app_database.dart';
 import '../../../../core/db/sqlite/database_helper.dart';
 import '../../../../core/db/storage_config.dart';
+import '../../../analytics_reports/presentation/providers/analytics_providers.dart';
+import '../../../direct_udhar/domain/entities/direct_udhar_loan.dart';
+import '../../../direct_udhar/presentation/providers/direct_udhar_providers.dart';
 import '../../data/datasources/contact_datasource.dart';
 import '../../data/datasources/contact_hive_datasource.dart';
 import '../../data/datasources/contact_sqlite_datasource.dart';
 import '../../data/repositories/contact_repository_impl.dart';
 import '../../domain/entities/contact.dart';
+import '../../domain/entities/contact_ledger_statement.dart';
 import '../../domain/repositories/contact_repository.dart';
+import '../../domain/services/contact_statement_builder.dart';
 import '../../domain/usecases/contact_usecases.dart';
 
 // ─── Infrastructure Providers ──────────────────────────────────────────────
@@ -74,6 +79,59 @@ final allContactListProvider = FutureProvider<List<Contact>>((ref) async {
   );
 });
 
+// ─── Global Search Providers ───────────────────────────────────────────────
+
+/// Pure filtering logic for Udhar Khata Global Search across Buyers and Suppliers.
+List<Contact> searchUdharContacts(List<Contact> contacts, String query) {
+  final trimmed = query.trim().toLowerCase();
+  if (trimmed.isEmpty) {
+    return contacts.where((c) => !c.isDeleted).toList();
+  }
+
+  return contacts.where((contact) {
+    if (contact.isDeleted) return false;
+
+    final nameMatches = contact.name.toLowerCase().contains(trimmed);
+    final mobileMatches = contact.mobileNumber.toLowerCase().contains(trimmed);
+
+    final isBuyer = contact.type == ContactType.buyer;
+    final typeMatches = (isBuyer &&
+            ('buyer'.contains(trimmed) ||
+                'grahak'.contains(trimmed) ||
+                'customer'.contains(trimmed))) ||
+        (!isBuyer &&
+            ('supplier'.contains(trimmed) ||
+                'bypari'.contains(trimmed) ||
+                'vendor'.contains(trimmed)));
+
+    final addressMatches =
+        contact.address?.toLowerCase().contains(trimmed) ?? false;
+    final villageMatches =
+        contact.villageTola?.toLowerCase().contains(trimmed) ?? false;
+    final shopMatches =
+        contact.shopLocation?.toLowerCase().contains(trimmed) ?? false;
+
+    return nameMatches ||
+        mobileMatches ||
+        typeMatches ||
+        addressMatches ||
+        villageMatches ||
+        shopMatches;
+  }).toList();
+}
+
+final udharGlobalSearchQueryProvider = StateProvider<String>((ref) => '');
+
+final udharGlobalSearchProvider =
+    Provider<AsyncValue<List<Contact>>>((ref) {
+  final query = ref.watch(udharGlobalSearchQueryProvider);
+  final allContactsAsync = ref.watch(allContactListProvider);
+
+  return allContactsAsync.whenData(
+    (contacts) => searchUdharContacts(contacts, query),
+  );
+});
+
 final contactByIdProvider =
     FutureProvider.family<Contact?, String>((ref, contactId) async {
   final repo = ref.watch(contactRepositoryProvider);
@@ -91,6 +149,27 @@ final contactTotalBalanceProvider =
   return result.fold(
     (failure) => throw Exception(failure.message),
     (balance) => balance,
+  );
+});
+
+final contactStatementProvider =
+    FutureProvider.family<ContactLedgerStatement?, String>((ref, contactId) async {
+  final contact = await ref.watch(contactByIdProvider(contactId).future);
+  if (contact == null) return null;
+
+  final loans = await ref.watch(loansByContactProvider(contactId).future);
+  final directUdharRepo = ref.watch(directUdharRepositoryProvider);
+
+  final repaymentsMap = <String, List<Repayment>>{};
+  for (final loan in loans) {
+    final repRes = await directUdharRepo.getRepayments(loan.id);
+    repaymentsMap[loan.id] = repRes.getOrElse((_) => []);
+  }
+
+  return ContactStatementBuilder.build(
+    contact: contact,
+    loans: loans,
+    loanRepayments: repaymentsMap,
   );
 });
 
@@ -136,6 +215,7 @@ class ContactFormNotifier extends StateNotifier<AsyncValue<void>> {
         _ref.invalidate(allContactListProvider);
         _ref.invalidate(contactByIdProvider(contact.id));
         _ref.invalidate(contactTotalBalanceProvider(contact.id));
+        _ref.invalidate(contactStatementProvider(contact.id));
         return true;
       },
     );
@@ -157,6 +237,8 @@ class ContactFormNotifier extends StateNotifier<AsyncValue<void>> {
         _ref.invalidate(allContactListProvider);
         _ref.invalidate(contactByIdProvider(contactId));
         _ref.invalidate(contactTotalBalanceProvider(contactId));
+        _ref.invalidate(contactStatementProvider(contactId));
+        _ref.invalidate(analyticsReportProvider);
         return true;
       },
     );

@@ -9,6 +9,7 @@ import '../../data/repositories/family_finance_repository_impl.dart';
 import '../../data/services/receipt_storage_service.dart';
 import '../../domain/entities/family_transaction.dart';
 import '../../domain/repositories/family_finance_repository.dart';
+import '../../../analytics_reports/presentation/providers/analytics_providers.dart';
 import '../../domain/usecases/family_finance_usecases.dart';
 import 'budget_providers.dart';
 
@@ -183,6 +184,89 @@ final monthlyExpenseProvider =
   );
 });
 
+// ─── Summary Calculation Model & Providers ────────────────────────────────
+
+class FamilyFinanceSummary {
+  const FamilyFinanceSummary({
+    required this.totalIncome,
+    required this.totalExpense,
+    required this.netBalance,
+  });
+
+  final double totalIncome;
+  final double totalExpense;
+  final double netBalance;
+
+  static const empty = FamilyFinanceSummary(
+    totalIncome: 0.0,
+    totalExpense: 0.0,
+    netBalance: 0.0,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FamilyFinanceSummary &&
+          runtimeType == other.runtimeType &&
+          totalIncome == other.totalIncome &&
+          totalExpense == other.totalExpense &&
+          netBalance == other.netBalance;
+
+  @override
+  int get hashCode => Object.hash(totalIncome, totalExpense, netBalance);
+}
+
+final familyTotalIncomeProvider = Provider<AsyncValue<double>>((ref) {
+  final txnsAsync = ref.watch(incomeListProvider);
+  return txnsAsync.whenData((txns) {
+    return txns.fold<double>(0.0, (sum, t) => sum + t.amount);
+  });
+});
+
+final familyTotalExpenseProvider = Provider<AsyncValue<double>>((ref) {
+  final txnsAsync = ref.watch(expenseListProvider);
+  return txnsAsync.whenData((txns) {
+    return txns.fold<double>(0.0, (sum, t) => sum + t.amount);
+  });
+});
+
+final familyFinanceSummaryProvider =
+    Provider<AsyncValue<FamilyFinanceSummary>>((ref) {
+  final incomeAsync = ref.watch(incomeListProvider);
+  final expenseAsync = ref.watch(expenseListProvider);
+
+  if (incomeAsync.hasError) {
+    return AsyncError(
+      incomeAsync.error!,
+      incomeAsync.stackTrace ?? StackTrace.current,
+    );
+  }
+  if (expenseAsync.hasError) {
+    return AsyncError(
+      expenseAsync.error!,
+      expenseAsync.stackTrace ?? StackTrace.current,
+    );
+  }
+  if (incomeAsync.isLoading || expenseAsync.isLoading) {
+    return const AsyncLoading();
+  }
+
+  final incomeList = incomeAsync.value ?? [];
+  final expenseList = expenseAsync.value ?? [];
+
+  final totalIncome =
+      incomeList.fold<double>(0.0, (sum, t) => sum + t.amount);
+  final totalExpense =
+      expenseList.fold<double>(0.0, (sum, t) => sum + t.amount);
+  final netBalance = totalIncome - totalExpense;
+
+  return AsyncData(FamilyFinanceSummary(
+    totalIncome: totalIncome,
+    totalExpense: totalExpense,
+    netBalance: netBalance,
+  ));
+});
+
 // ─── Form Notifier ───────────────────────────────────────────────────────
 
 class FamilyFinanceNotifier extends StateNotifier<AsyncValue<void>> {
@@ -249,6 +333,7 @@ class FamilyFinanceNotifier extends StateNotifier<AsyncValue<void>> {
     _ref.invalidate(monthlyExpenseProvider);
     _ref.invalidate(monthlyBudgetCalculationsProvider);
     _ref.invalidate(activeBudgetCalculationsProvider);
+    _ref.invalidate(analyticsReportProvider);
   }
 }
 

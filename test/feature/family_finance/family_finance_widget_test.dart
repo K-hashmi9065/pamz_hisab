@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:pamz_khata/feature/analytics_reports/data/models/analytics_models.dart';
+import 'package:pamz_khata/feature/analytics_reports/presentation/providers/analytics_providers.dart';
 import 'package:pamz_khata/feature/family_finance/data/services/receipt_storage_service.dart';
 import 'package:pamz_khata/feature/family_finance/domain/entities/family_transaction.dart';
 import 'package:pamz_khata/feature/family_finance/presentation/providers/family_finance_providers.dart';
@@ -201,6 +203,16 @@ void main() {
         categoriesProvider('income').overrideWith((ref) async => [testCategories[0]]),
         categoriesProvider('expense').overrideWith((ref) async => [testCategories[1]]),
         accountsProvider.overrideWith((ref) async => testAccounts),
+        analyticsReportProvider.overrideWith((ref) async => AnalyticsReportData(
+          horizon: AnalyticsTimeHorizon.monthly,
+          startDate: DateTime(2026, 1, 1),
+          endDate: DateTime(2026, 12, 31),
+          summary: FinancialSummaryData.zero,
+          categoryBreakdown: [],
+          pnlTrend: [],
+          quarterlyBreakdown: [],
+          tenYearComparison: [],
+        )),
       ];
     }
 

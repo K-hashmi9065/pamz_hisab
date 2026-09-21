@@ -94,7 +94,7 @@ class _UserGuideScreenState extends State<UserGuideScreen> {
               '• Direction: Choose "Given (Lent)" or "Taken (Borrowed)".\n'
               '• Interest Types: Choose "Interest-Free" or "Simple Interest (% per month)".\n'
               '• Due Dates: Set optional due dates to track payment deadlines.\n'
-              '• Status Lifecycle: Automatically transitions from OPEN → PARTIALLY PAID → CLOSED upon full repayment.',
+              '• Status Lifecycle: Automatically transitions from OPEN → CLOSED upon full repayment.',
         ),
         _GuideItem(
           title: 'WhatsApp & PDF Statement Sharing',
@@ -338,7 +338,7 @@ class _UserGuideScreenState extends State<UserGuideScreen> {
               Container(
                 padding: EdgeInsets.all(AppSpacing.lg.w),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
+                  gradient: const LinearGradient(
                     colors: [
                       AppColors.primary,
                       AppColors.primaryDark,

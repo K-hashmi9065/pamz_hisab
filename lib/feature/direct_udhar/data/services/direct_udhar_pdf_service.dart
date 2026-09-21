@@ -494,8 +494,8 @@ class DirectUdharPdfService {
                   children: [
                     pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Date', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))),
                     pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Particulars / Details', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))),
-                    pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Debit (Lent)', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))),
-                    pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Credit (Repaid)', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))),
+                    pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Debit (${contact.isBuyer ? "Lent" : "Paid"})', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))),
+                    pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Credit (${contact.isBuyer ? "Jama" : "Payable"})', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))),
                     pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Balance', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))),
                   ],
                 ),
@@ -517,7 +517,13 @@ class DirectUdharPdfService {
                   ...statement.items.map((item) {
                     final isDebit = item.debit > 0;
                     final isCredit = item.credit > 0;
-                    final balanceStr = '${currencyFormatter.format(item.runningBalance.abs())} ${item.runningBalance >= 0 ? "Dr" : "Cr"}';
+                    final double bal = item.runningBalance;
+                    final String balanceStr;
+                    if (contact.isBuyer) {
+                      balanceStr = '${currencyFormatter.format(bal.abs())} ${bal >= 0 ? "Dr (Rec)" : "Cr (Adv)"}';
+                    } else {
+                      balanceStr = '${currencyFormatter.format(bal.abs())} ${bal <= 0 ? "Cr (Pay)" : "Dr (Adv)"}';
+                    }
 
                     return pw.TableRow(
                       children: [
@@ -569,37 +575,71 @@ class DirectUdharPdfService {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text('Total Debited (Lent): ${currencyFormatter.format(statement.totalDebit)}', style: const pw.TextStyle(fontSize: 9.5)),
+                      pw.Text('Total Debited (${contact.isBuyer ? "Lent" : "Paid"}): ${currencyFormatter.format(statement.totalDebit)}', style: const pw.TextStyle(fontSize: 9.5)),
                       pw.SizedBox(height: 2),
-                      pw.Text('Total Credited (Repaid): ${currencyFormatter.format(statement.totalCredit)}', style: const pw.TextStyle(fontSize: 9.5, color: PdfColors.green900)),
+                      pw.Text('Total Credited (${contact.isBuyer ? "Jama" : "Payables"}): ${currencyFormatter.format(statement.totalCredit)}', style: const pw.TextStyle(fontSize: 9.5, color: PdfColors.green900)),
                       if (statement.totalAccruedInterest > 0) ...[
                         pw.SizedBox(height: 2),
                         pw.Text('Accrued Interest: ${currencyFormatter.format(statement.totalAccruedInterest)}', style: const pw.TextStyle(fontSize: 9.5, color: PdfColors.grey800)),
                       ],
                     ],
                   ),
-                  pw.Container(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: pw.BoxDecoration(
-                      color: isReceivable ? PdfColors.green100 : PdfColors.orange100,
-                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
-                      border: pw.Border.all(color: isReceivable ? PdfColors.green800 : PdfColors.orange800),
-                    ),
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.end,
-                      children: [
-                        pw.Text(
-                          isReceivable ? 'NET RECEIVABLE' : 'NET PAYABLE',
-                          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: isReceivable ? PdfColors.green900 : PdfColors.orange900),
-                        ),
-                        pw.SizedBox(height: 2),
-                        pw.Text(
-                          currencyFormatter.format(statement.netOutstandingBalance.abs()),
-                          style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: isReceivable ? PdfColors.green900 : PdfColors.orange900),
-                        ),
-                      ],
-                    ),
-                  ),
+                  () {
+                    final double netBal = statement.netOutstandingBalance;
+                    final String netTitle;
+                    final PdfColor netTextColor;
+                    final PdfColor netBgColor;
+                    final PdfColor netBorderColor;
+
+                    if (contact.isBuyer) {
+                      if (netBal >= 0) {
+                        netTitle = 'NET RECEIVABLE';
+                        netTextColor = PdfColors.green900;
+                        netBgColor = PdfColors.green100;
+                        netBorderColor = PdfColors.green800;
+                      } else {
+                        netTitle = 'ADVANCE RECEIVED';
+                        netTextColor = PdfColors.orange900;
+                        netBgColor = PdfColors.orange100;
+                        netBorderColor = PdfColors.orange800;
+                      }
+                    } else {
+                      if (netBal <= 0) {
+                        netTitle = 'NET PAYABLE';
+                        netTextColor = PdfColors.red900;
+                        netBgColor = PdfColors.red100;
+                        netBorderColor = PdfColors.red800;
+                      } else {
+                        netTitle = 'ADVANCE PAID';
+                        netTextColor = PdfColors.green900;
+                        netBgColor = PdfColors.green100;
+                        netBorderColor = PdfColors.green800;
+                      }
+                    }
+
+                    return pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: pw.BoxDecoration(
+                        color: netBgColor,
+                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+                        border: pw.Border.all(color: netBorderColor),
+                      ),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.end,
+                        children: [
+                          pw.Text(
+                            netTitle,
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: netTextColor),
+                          ),
+                          pw.SizedBox(height: 2),
+                          pw.Text(
+                            currencyFormatter.format(netBal.abs()),
+                            style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: netTextColor),
+                          ),
+                        ],
+                      ),
+                    );
+                  }(),
                 ],
               ),
             ),

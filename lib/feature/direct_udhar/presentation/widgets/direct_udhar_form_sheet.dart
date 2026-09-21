@@ -12,6 +12,7 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../contacts/presentation/providers/contact_providers.dart';
 import '../../../contacts/presentation/screens/contact_form_screen.dart';
+import '../../../contacts/presentation/services/contact_ledger_share_helper.dart';
 import '../../domain/entities/direct_udhar_loan.dart';
 import '../providers/direct_udhar_providers.dart';
 
@@ -233,6 +234,16 @@ class _DirectUdharFormSheetState extends ConsumerState<DirectUdharFormSheet> {
                     ),
                     SizedBox(height: AppSpacing.md.h),
 
+                    // Title / Purpose (shown in place of "Udhar Given")
+                    AppTextField(
+                      label: 'Udhar Title / Purpose (optional)',
+                      hint: 'e.g. Kamran ko shopping ke liye, Emergency, etc.',
+                      controller: _memoCtrl,
+                      prefixIcon: const Icon(Icons.title_rounded),
+                      textInputAction: TextInputAction.next,
+                    ),
+                    SizedBox(height: AppSpacing.md.h),
+
                     // Interest Type
                     SegmentedButton<InterestType>(
                       segments: const [
@@ -309,14 +320,6 @@ class _DirectUdharFormSheetState extends ConsumerState<DirectUdharFormSheet> {
                         }
                       },
                     ),
-                    SizedBox(height: AppSpacing.md.h),
-
-                    // Memo
-                    AppTextField(
-                      label: 'Memo (optional)',
-                      controller: _memoCtrl,
-                      textInputAction: TextInputAction.done,
-                    ),
                     SizedBox(height: AppSpacing.xxl.h),
 
                     // Save Button
@@ -382,13 +385,31 @@ class _DirectUdharFormSheetState extends ConsumerState<DirectUdharFormSheet> {
     final success = await notifier.createLoan(loan);
 
     if (success && mounted) {
-      Navigator.pop(context);
-      AppSnackbar.showSuccess(
-        context,
-        _direction == LoanDirection.lent
-            ? 'Udhar loan recorded successfully'
-            : 'Borrowed amount recorded successfully',
-      );
+      final savedContactId = _selectedContactId!;
+      final isLent = _direction == LoanDirection.lent;
+      final contactRepo = ref.read(contactRepositoryProvider);
+      final directUdharRepo = ref.read(directUdharRepositoryProvider);
+      final shareService = ref.read(directUdharShareServiceProvider);
+
+      final parentCtx = Navigator.of(context).context;
+      Navigator.of(context).pop();
+
+      if (parentCtx.mounted) {
+        AppSnackbar.showSuccess(
+          parentCtx,
+          isLent
+              ? 'Udhar loan recorded successfully'
+              : 'Borrowed amount recorded successfully',
+        );
+
+        await ContactLedgerShareHelper.showPostTransactionShareDialog(
+          context: parentCtx,
+          contactId: savedContactId,
+          contactRepository: contactRepo,
+          directUdharRepository: directUdharRepo,
+          shareService: shareService,
+        );
+      }
     }
   }
 }

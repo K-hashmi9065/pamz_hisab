@@ -17,8 +17,8 @@ import '../../../direct_udhar/presentation/widgets/direct_udhar_form_sheet.dart'
 import '../../../direct_udhar/presentation/widgets/opening_balance_form_sheet.dart';
 import '../../../direct_udhar/presentation/widgets/repayment_form_sheet.dart';
 import '../../domain/entities/contact.dart';
-import '../../domain/services/contact_statement_builder.dart';
 import '../providers/contact_providers.dart';
+import '../services/contact_ledger_share_helper.dart';
 import 'contact_form_screen.dart';
 
 /// Detail screen for a Contact (Buyer or Supplier).
@@ -41,6 +41,7 @@ class ContactDetailScreen extends ConsumerWidget {
     final contactAsync = ref.watch(contactByIdProvider(contactId));
     final balanceAsync = ref.watch(contactTotalBalanceProvider(contactId));
     final loansAsync = ref.watch(loansByContactProvider(contactId));
+    final statementAsync = ref.watch(contactStatementProvider(contactId));
 
     return contactAsync.when(
       loading: () => const Scaffold(body: AppLoader(message: 'Loading contact details...')),
@@ -70,6 +71,9 @@ class ContactDetailScreen extends ConsumerWidget {
           );
         }
 
+        final currencyFormatter = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2);
+        final dateFormatter = DateFormat('dd MMM yyyy');
+
         return Scaffold(
           appBar: CustomAppBar(
             title: contact.name,
@@ -78,7 +82,7 @@ class ContactDetailScreen extends ConsumerWidget {
               IconButton(
                 key: const Key('shareStatementButton'),
                 icon: const Icon(Icons.share_rounded),
-                tooltip: 'Share Ledger Statement (WhatsApp/PDF)',
+                tooltip: 'Share History',
                 onPressed: () => _shareStatement(context, ref, contact),
               ),
               IconButton(
@@ -106,18 +110,275 @@ class ContactDetailScreen extends ConsumerWidget {
               _buildActionButtons(context, ref, contact),
               SizedBox(height: AppSpacing.xl.h),
 
-              // Direct Udhar Transactions Section
-              Text(
-                'Direct Udhar & Opening Balances',
-                style: AppTextStyles.h3,
+              // Active Open Loans Section (if any open loans exist)
+              loansAsync.when(
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+                data: (loans) {
+                  final openLoans = loans
+                      .where((l) => !l.isDeleted && l.status != LoanStatus.closed && l.outstandingBalance > 0)
+                      .toList();
+                  if (openLoans.isEmpty) return const SizedBox.shrink();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Active / Open Udhar', style: AppTextStyles.h3),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                            decoration: BoxDecoration(
+                              color: AppColors.warningLight,
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            child: Text(
+                              '${openLoans.length} active',
+                              style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: AppColors.warningText),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: AppSpacing.sm.h),
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: openLoans.length,
+                        separatorBuilder: (_, __) => SizedBox(height: AppSpacing.sm.h),
+                        itemBuilder: (_, i) {
+                          final loan = openLoans[i];
+                          final isLent = loan.direction == LoanDirection.lent;
+                          final isOpening = loan.memo != null && loan.memo!.contains('[Opening Balance]');
+                          final cleanMemo = loan.memo?.replaceAll('[Opening Balance]', '').trim();
+                          final hasCustomMemo = cleanMemo != null && cleanMemo.isNotEmpty;
+                          final interestInfo = loan.interestType == InterestType.simple
+                              ? "Simple (${loan.interestRatePercent}%/mo)"
+                              : "Interest-Free";
+
+                          final totalPrincipal = loan.principalAmount;
+                          final remainingBalance = loan.outstandingBalance;
+                          final totalPaid = (totalPrincipal - remainingBalance).clamp(0.0, double.infinity);
+
+                          final cardTitle = hasCustomMemo
+                              ? cleanMemo
+                              : (isOpening ? 'Opening Balance' : (isLent ? 'Udhar Given' : 'Udhar Taken'));
+                          final cardSubtitle = hasCustomMemo
+                              ? '${isOpening ? "Opening Balance" : (isLent ? "Udhar Given" : "Udhar Taken")} • ${dateFormatter.format(loan.createdAt)} • $interestInfo'
+                              : '${dateFormatter.format(loan.createdAt)} • $interestInfo';
+
+                          return AppCard(
+                            padding: EdgeInsets.all(AppSpacing.md.w),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 18.r,
+                                      backgroundColor: isLent ? AppColors.debitLight : AppColors.creditLight,
+                                      child: Icon(
+                                        isLent ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                                        color: isLent ? AppColors.debit : AppColors.credit,
+                                        size: 20.r,
+                                      ),
+                                    ),
+                                    SizedBox(width: 10.w),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            cardTitle,
+                                            style: AppTextStyles.bodyMedium.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 14.sp,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          SizedBox(height: 2.h),
+                                          Text(
+                                            cardSubtitle,
+                                            style: AppTextStyles.caption.copyWith(
+                                              fontSize: 11.sp,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    SizedBox(width: 8.w),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          currencyFormatter.format(loan.outstandingBalance),
+                                          style: AppTextStyles.amount.copyWith(
+                                            fontSize: 14.sp,
+                                            fontWeight: FontWeight.bold,
+                                            color: isLent ? AppColors.debit : AppColors.credit,
+                                          ),
+                                        ),
+                                        Container(
+                                          margin: EdgeInsets.only(top: 2.h),
+                                          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.5.h),
+                                          decoration: BoxDecoration(
+                                            color: (loan.status == LoanStatus.closed ? AppColors.credit : AppColors.primary).withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(4.r),
+                                          ),
+                                          child: Text(
+                                            loan.status == LoanStatus.closed ? 'CLOSED' : 'OPEN',
+                                            style: TextStyle(
+                                              fontSize: 9.sp,
+                                              fontWeight: FontWeight.w800,
+                                              color: loan.status == LoanStatus.closed ? AppColors.credit : AppColors.primary,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(width: 4.w),
+                                    IconButton(
+                                      icon: const Icon(Icons.payments_outlined, color: AppColors.primary),
+                                      tooltip: 'Record Repayment (Jama)',
+                                      visualDensity: VisualDensity.compact,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      onPressed: () {
+                                        showModalBottomSheet(
+                                          context: context,
+                                          isScrollControlled: true,
+                                          builder: (_) => RepaymentFormSheet(
+                                            contact: contact,
+                                            initialLoan: loan,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 10.h),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 7.h),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).brightness == Brightness.dark
+                                        ? Colors.white.withValues(alpha: 0.05)
+                                        : Colors.grey.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(6.r),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            isLent ? 'Total Lent' : 'Total Borrowed',
+                                            style: TextStyle(fontSize: 10.sp, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                                          ),
+                                          SizedBox(height: 1.h),
+                                          Text(
+                                            currencyFormatter.format(totalPrincipal),
+                                            style: TextStyle(fontSize: 11.5.sp, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                          ),
+                                        ],
+                                      ),
+                                      Container(width: 1, height: 22.h, color: Colors.grey.withValues(alpha: 0.25)),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Total Paid',
+                                            style: TextStyle(fontSize: 10.sp, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                                          ),
+                                          SizedBox(height: 1.h),
+                                          Text(
+                                            currencyFormatter.format(totalPaid),
+                                            style: TextStyle(fontSize: 11.5.sp, fontWeight: FontWeight.w600, color: AppColors.credit),
+                                          ),
+                                        ],
+                                      ),
+                                      Container(width: 1, height: 22.h, color: Colors.grey.withValues(alpha: 0.25)),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            'Remaining (To Pay)',
+                                            style: TextStyle(fontSize: 10.sp, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                                          ),
+                                          SizedBox(height: 1.h),
+                                          Text(
+                                            currencyFormatter.format(remainingBalance),
+                                            style: TextStyle(
+                                              fontSize: 11.5.sp,
+                                              fontWeight: FontWeight.bold,
+                                              color: isLent ? AppColors.debit : AppColors.primary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      SizedBox(height: AppSpacing.xl.h),
+                    ],
+                  );
+                },
+              ),
+
+              // Full Transaction History & Ledger Timeline Section
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxWidth < 450;
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Transaction History & Ledger',
+                              style: AppTextStyles.h3,
+                            ),
+                            SizedBox(height: 2.h),
+                            Text(
+                              'Newest first',
+                              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: AppSpacing.sm.w),
+                      AppButton(
+                        key: const Key('shareStatementFullButton'),
+                        label: isCompact ? 'Share' : 'Share History',
+                        icon: Icons.share_rounded,
+                        variant: AppButtonVariant.secondary,
+                        onPressed: () => _shareStatement(context, ref, contact),
+                      ),
+                    ],
+                  );
+                },
               ),
               SizedBox(height: AppSpacing.sm.h),
-              loansAsync.when(
+              statementAsync.when(
                 loading: () => const LinearProgressIndicator(),
-                error: (e, _) => Text('Error loading transactions: $e', style: AppTextStyles.caption),
-                data: (loans) {
-                  final activeLoans = loans.where((l) => !l.isDeleted).toList();
-                  if (activeLoans.isEmpty) {
+                error: (e, _) => Text('Error loading history: $e', style: AppTextStyles.caption),
+                data: (statement) {
+                  final items = statement?.items ?? [];
+                  if (items.isEmpty) {
                     return AppCard(
                       child: Center(
                         child: Padding(
@@ -125,10 +386,10 @@ class ContactDetailScreen extends ConsumerWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.receipt_long_outlined, size: 36.w, color: AppColors.textDisabled),
+                              Icon(Icons.history_rounded, size: 36.w, color: AppColors.textDisabled),
                               SizedBox(height: AppSpacing.xs.h),
                               Text(
-                                'No loan or opening balance records found.',
+                                'No historical transactions recorded yet.',
                                 style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
                               ),
                             ],
@@ -138,84 +399,129 @@ class ContactDetailScreen extends ConsumerWidget {
                     );
                   }
 
-                  final currencyFormatter = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2);
-                  final dateFormatter = DateFormat('dd MMM yyyy');
+                  // Display chronological entries in newest-first order
+                  final historyItems = items.reversed.toList();
 
                   return ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: activeLoans.length,
+                    itemCount: historyItems.length,
                     separatorBuilder: (_, __) => SizedBox(height: AppSpacing.sm.h),
                     itemBuilder: (_, i) {
-                      final loan = activeLoans[i];
-                      final isLent = loan.direction == LoanDirection.lent;
-                      final isOpening = loan.memo != null && loan.memo!.contains('[Opening Balance]');
+                      final item = historyItems[i];
+                      final isRepayment = item.type == 'repayment';
+                      final isOpening = item.type == 'opening_balance';
+
+                      final Color iconColor;
+                      final IconData iconData;
+                      final Color amountColor;
+                      final String amountPrefix;
+
+                      if (isOpening) {
+                        iconColor = Colors.indigo;
+                        iconData = Icons.account_balance_wallet_outlined;
+                        amountColor = Colors.indigo;
+                        amountPrefix = '';
+                      } else if (isRepayment) {
+                        iconColor = AppColors.credit;
+                        iconData = Icons.payments_rounded;
+                        amountColor = AppColors.credit;
+                        amountPrefix = '+';
+                      } else {
+                        iconColor = AppColors.debit;
+                        iconData = item.type == 'loan_lent'
+                            ? Icons.arrow_upward_rounded
+                            : Icons.arrow_downward_rounded;
+                        amountColor = AppColors.debit;
+                        amountPrefix = '-';
+                      }
+
+                      final amount = item.debit > 0 ? item.debit : item.credit;
+                      final double bal = item.runningBalance;
+                      final String balLabel;
+                      final Color balColor;
+
+                      if (contact.isBuyer) {
+                        if (bal >= 0) {
+                          balLabel = 'Bal: ${currencyFormatter.format(bal)} Rec';
+                          balColor = AppColors.credit;
+                        } else {
+                          balLabel = 'Bal: ${currencyFormatter.format(bal.abs())} Adv';
+                          balColor = AppColors.warningText;
+                        }
+                      } else {
+                        // Supplier: negative runningBalance indicates Payable (Dene Baaki)
+                        if (bal <= 0) {
+                          balLabel = 'Bal: ${currencyFormatter.format(bal.abs())} Pay';
+                          balColor = AppColors.debit;
+                        } else {
+                          balLabel = 'Bal: ${currencyFormatter.format(bal)} Adv';
+                          balColor = AppColors.credit;
+                        }
+                      }
+
+                      final iconBgColor = iconColor.withValues(alpha: 0.12);
 
                       return AppCard(
                         padding: EdgeInsets.zero,
                         child: ListTile(
+                          contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: 4.h),
                           leading: CircleAvatar(
-                            backgroundColor: isLent ? AppColors.creditLight : AppColors.debitLight,
-                            child: Icon(
-                              isLent ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-                              color: isLent ? AppColors.credit : AppColors.debit,
-                            ),
+                            backgroundColor: iconBgColor,
+                            child: Icon(iconData, color: iconColor, size: 20.r),
                           ),
-                          title: Text(
-                            isOpening ? 'Opening Balance' : (isLent ? 'Udhar Given' : 'Udhar Taken'),
-                            style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Text(
-                            '${dateFormatter.format(loan.createdAt)} • ${loan.interestType == InterestType.simple ? "Simple Interest (${loan.interestRatePercent}%/mo)" : "Interest-Free"}',
-                            style: AppTextStyles.caption,
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
+                          title: Row(
                             children: [
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.end,
+                              Expanded(
+                                child: Text(
+                                  item.description,
+                                  style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              SizedBox(width: 8.w),
+                              Text(
+                                '$amountPrefix${currencyFormatter.format(amount)}',
+                                style: AppTextStyles.amount.copyWith(
+                                  fontSize: 14.sp,
+                                  color: amountColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(height: 2.h),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    currencyFormatter.format(loan.outstandingBalance),
-                                    style: AppTextStyles.amount.copyWith(
-                                      fontSize: 14.sp,
-                                      color: isLent ? AppColors.credit : AppColors.debit,
-                                    ),
+                                    dateFormatter.format(item.date),
+                                    style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
                                   ),
                                   Text(
-                                    loan.status == LoanStatus.closed
-                                        ? 'CLOSED'
-                                        : (loan.status == LoanStatus.partiallyPaid
-                                            ? 'PARTIALLY PAID'
-                                            : 'OPEN'),
+                                    balLabel,
                                     style: TextStyle(
-                                      fontSize: 10.sp,
-                                      fontWeight: FontWeight.w700,
-                                      color: loan.status == LoanStatus.closed
-                                          ? AppColors.credit
-                                          : (loan.status == LoanStatus.partiallyPaid
-                                              ? AppColors.warningText
-                                              : AppColors.primary),
+                                      fontSize: 11.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: balColor,
                                     ),
                                   ),
                                 ],
                               ),
-                              if (loan.outstandingBalance > 0) ...[
-                                SizedBox(width: AppSpacing.xs.w),
-                                IconButton(
-                                  icon: const Icon(Icons.payments_outlined, color: AppColors.primary),
-                                  tooltip: 'Record Repayment (Jama)',
-                                  onPressed: () {
-                                    showModalBottomSheet(
-                                      context: context,
-                                      isScrollControlled: true,
-                                      builder: (_) => RepaymentFormSheet(
-                                        contact: contact,
-                                        initialLoan: loan,
-                                      ),
-                                    );
-                                  },
+                              if (item.interestDetails != null && item.interestDetails!.isNotEmpty) ...[
+                                SizedBox(height: 2.h),
+                                Text(
+                                  item.interestDetails!,
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ],
@@ -435,29 +741,14 @@ class ContactDetailScreen extends ConsumerWidget {
           },
         );
 
-        final btnShare = AppButton(
-          key: const Key('shareStatementFullButton'),
-          label: 'Share Ledger Statement (WhatsApp / PDF)',
-          icon: Icons.picture_as_pdf_rounded,
-          variant: AppButtonVariant.ghost,
-          isFullWidth: true,
-          onPressed: () => _shareStatement(context, ref, contact),
-        );
-
         if (isWide) {
-          return Column(
+          return Row(
             children: [
-              Row(
-                children: [
-                  Expanded(child: btnUdhar),
-                  SizedBox(width: AppSpacing.sm.w),
-                  Expanded(child: btnJama),
-                  SizedBox(width: AppSpacing.sm.w),
-                  Expanded(child: btnOpening),
-                ],
-              ),
-              SizedBox(height: AppSpacing.sm.h),
-              btnShare,
+              Expanded(child: btnUdhar),
+              SizedBox(width: AppSpacing.sm.w),
+              Expanded(child: btnJama),
+              SizedBox(width: AppSpacing.sm.w),
+              Expanded(child: btnOpening),
             ],
           );
         }
@@ -478,8 +769,6 @@ class ContactDetailScreen extends ConsumerWidget {
                 Expanded(child: btnOpening),
               ],
             ),
-            SizedBox(height: AppSpacing.sm.h),
-            btnShare,
           ],
         );
       },
@@ -487,35 +776,11 @@ class ContactDetailScreen extends ConsumerWidget {
   }
 
   Future<void> _shareStatement(BuildContext context, WidgetRef ref, Contact contact) async {
-    try {
-      final loansRes = await ref.read(directUdharRepositoryProvider).getByContact(contact.id);
-      final loans = loansRes.getOrElse((_) => []);
-
-      final repaymentsMap = <String, List<Repayment>>{};
-      for (final loan in loans) {
-        final repRes = await ref.read(directUdharRepositoryProvider).getRepayments(loan.id);
-        repaymentsMap[loan.id] = repRes.getOrElse((_) => []);
-      }
-
-      final statement = ContactStatementBuilder.build(
-        contact: contact,
-        loans: loans,
-        loanRepayments: repaymentsMap,
-      );
-
-      final shareService = ref.read(directUdharShareServiceProvider);
-      final success = await shareService.shareStatementPdfWithSummary(
-        statement: statement,
-      );
-
-      if (!success && context.mounted) {
-        AppSnackbar.showError(context, 'Could not launch share sheet. Please try again.');
-      }
-    } catch (e) {
-      if (context.mounted) {
-        AppSnackbar.showError(context, 'Failed to generate statement: $e');
-      }
-    }
+    await ContactLedgerShareHelper.shareContactHistory(
+      context: context,
+      ref: ref,
+      contactId: contact.id,
+    );
   }
 
   void _openEditForm(BuildContext context, Contact contact) {

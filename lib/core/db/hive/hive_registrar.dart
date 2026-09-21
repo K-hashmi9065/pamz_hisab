@@ -1,4 +1,7 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../constants/app_constants.dart';
 
@@ -10,8 +13,15 @@ class HiveRegistrar {
   static Future<void> initialize([String? path]) async {
     if (path != null) {
       Hive.init(path);
-    } else {
+    } else if (kIsWeb) {
       await Hive.initFlutter();
+    } else {
+      final appSupportDir = await getApplicationSupportDirectory();
+      final hiveDir = Directory('${appSupportDir.path}/hive_db');
+      if (!await hiveDir.exists()) {
+        await hiveDir.create(recursive: true);
+      }
+      Hive.init(hiveDir.path);
     }
     await _openBoxes();
     await _seedDefaults();

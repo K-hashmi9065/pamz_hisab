@@ -15,6 +15,7 @@ import '../../../../shared/widgets/app_states.dart';
 import '../../domain/entities/family_transaction.dart';
 import 'budget_screen.dart';
 import '../providers/family_finance_providers.dart';
+import '../widgets/family_finance_summary_cards.dart';
 import '../widgets/transaction_form_sheet.dart';
 
 /// Family Finance screen — tabbed Income / Expense view (FR-FE-001/002).
@@ -62,12 +63,98 @@ class _FamilyFinanceScreenState extends ConsumerState<FamilyFinanceScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final isWide = MediaQuery.of(context).size.width >= AppConstants.tabletBreakpoint;
+
+    final body = Column(
+      children: [
+        // 1. Summary Cards (Total Income | Total Expense | Net Balance)
+        Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.md.w,
+            vertical: AppSpacing.sm.h,
+          ),
+          child: const FamilyFinanceSummaryCards(),
+        ),
+
+        // 2. Tab Switch (Income | Expense)
+        Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.md.w,
+            vertical: AppSpacing.xs.h,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColors.darkCardBackground
+                  : AppColors.cardBackground,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMd.r),
+              border: Border.all(
+                color: isDark ? AppColors.darkOutline : AppColors.outline,
+              ),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              indicator: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd.r - 2),
+                color: _tabController.index == 0
+                    ? AppColors.creditLight.withValues(alpha: 0.4)
+                    : AppColors.debitLight.withValues(alpha: 0.4),
+              ),
+              indicatorSize: TabBarIndicatorSize.tab,
+              labelColor: _tabController.index == 0 ? AppColors.credit : AppColors.debit,
+              unselectedLabelColor: isDark
+                  ? AppColors.darkTextSecondary
+                  : AppColors.textSecondary,
+              labelStyle: AppTextStyles.bodyMedium.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+              unselectedLabelStyle: AppTextStyles.bodyMedium.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+              dividerColor: Colors.transparent,
+              tabs: const [
+                Tab(
+                  icon: Icon(Icons.trending_up_rounded),
+                  text: 'Income',
+                  iconMargin: EdgeInsets.only(bottom: 2),
+                ),
+                Tab(
+                  icon: Icon(Icons.trending_down_rounded),
+                  text: 'Expense',
+                  iconMargin: EdgeInsets.only(bottom: 2),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // 3. TabBarView (Transactions list)
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _TransactionListView(
+                type: 'income',
+                onAddPressed: () => _openAddTransactionSheet('income'),
+              ),
+              _TransactionListView(
+                type: 'expense',
+                onAddPressed: () => _openAddTransactionSheet('expense'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
     return Scaffold(
       appBar: CustomAppBar(
         title: 'Family Finance',
         actions: [
           IconButton(
-            icon: const Icon(Icons.track_changes_rounded),
+            icon: const Icon(Icons.track_changes_rounded, size: 28),
             tooltip: 'Budget Tracking',
             onPressed: () {
               Navigator.push(
@@ -78,33 +165,16 @@ class _FamilyFinanceScreenState extends ConsumerState<FamilyFinanceScreen>
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline_rounded),
-            tooltip: 'Add Transaction',
-            onPressed: () => _openAddTransactionSheet(),
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.trending_up_rounded), text: 'Income'),
-            Tab(icon: Icon(Icons.trending_down_rounded), text: 'Expense'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _TransactionListView(
-            type: 'income',
-            onAddPressed: () => _openAddTransactionSheet('income'),
-          ),
-          _TransactionListView(
-            type: 'expense',
-            onAddPressed: () => _openAddTransactionSheet('expense'),
-          ),
         ],
       ),
+      body: isWide
+          ? Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 960),
+                child: body,
+              ),
+            )
+          : body,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openAddTransactionSheet(),
         icon: const Icon(Icons.add_rounded),

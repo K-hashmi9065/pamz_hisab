@@ -22,12 +22,15 @@ import 'route_paths.dart';
 
 /// Centralised GoRouter provider with session lock guard.
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final isUnlocked = ref.watch(appLockProvider.select((s) => s.isUnlocked));
+  final routerListenable = ValueNotifier<bool>(
+    ref.read(appLockProvider).isUnlocked,
+  );
 
-  final routerListenable = ValueNotifier<bool>(isUnlocked);
   ref.listen<bool>(appLockProvider.select((s) => s.isUnlocked), (_, next) {
     routerListenable.value = next;
   });
+
+  ref.onDispose(routerListenable.dispose);
 
   return _buildRouter(
     refreshListenable: routerListenable,

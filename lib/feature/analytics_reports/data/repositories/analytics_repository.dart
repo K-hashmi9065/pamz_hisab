@@ -209,6 +209,85 @@ class LocalAnalyticsRepositoryImpl implements AnalyticsRepository {
         currentYear: now.year,
       );
 
+      // 7. Assemble Unified Transaction History for the Period
+      final List<AnalyticsTransactionItem> transactions = [];
+      final contactsMap = raw.contactsMap;
+
+      for (final txn in inRangeTxns) {
+        final type = txn['type'] as String? ?? 'expense';
+        final amount = (txn['amount'] as num?)?.toDouble() ?? 0.0;
+        final catId = txn['category_id'] as String? ?? 'unknown';
+        final catInfo = categoriesMap[catId];
+        final catName = catInfo?['name'] as String? ?? (type == 'income' ? 'Income' : 'Expense');
+        final notes = txn['notes'] as String?;
+        final title = (notes != null && notes.trim().isNotEmpty) ? notes.trim() : catName;
+
+        transactions.add(AnalyticsTransactionItem(
+          id: txn['id'] as String? ?? '',
+          title: title,
+          subtitle: (notes != null && notes.trim().isNotEmpty) ? catName : (type == 'income' ? 'Family Income' : 'Family Expense'),
+          date: txn['_parsed_date'] as DateTime,
+          amount: amount,
+          type: type,
+          categoryName: catName,
+          categoryIcon: catInfo?['icon_key'] as String?,
+          categoryColor: catInfo?['color_hex'] as String?,
+          paymentMode: txn['payment_mode'] as String? ?? txn['account_name'] as String?,
+        ));
+      }
+
+      for (final loan in inRangeLoans) {
+        final direction = loan['direction'] as String? ?? 'lent';
+        final isLent = direction == 'lent';
+        final principal = (loan['principal_amount'] as num?)?.toDouble() ?? 0.0;
+        final contactId = loan['contact_id'] as String?;
+        final contact = contactId != null ? contactsMap[contactId] : null;
+        final contactName = contact?['name'] as String? ?? 'Party';
+        final isOpening = loan['memo'] != null && (loan['memo'] as String).contains('[Opening Balance]');
+        final cleanMemo = (loan['memo'] as String?)?.replaceAll('[Opening Balance]', '').trim();
+        final hasCustomMemo = cleanMemo != null && cleanMemo.isNotEmpty;
+
+        final title = hasCustomMemo
+            ? cleanMemo
+            : (isOpening ? 'Opening Balance' : (isLent ? 'Udhar Given' : 'Udhar Taken'));
+
+        transactions.add(AnalyticsTransactionItem(
+          id: loan['id'] as String? ?? '',
+          title: title,
+          subtitle: '$contactName • ${isOpening ? "Opening Balance" : (isLent ? "Udhar Given" : "Udhar Taken")}',
+          date: loan['_parsed_date'] as DateTime,
+          amount: principal,
+          type: isLent ? 'udhar_lent' : 'udhar_borrowed',
+          contactName: contactName,
+        ));
+      }
+
+      for (final rep in inRangeRepayments) {
+        final amt = (rep['amount'] as num?)?.toDouble() ?? 0.0;
+        final sourceId = rep['source_id'] as String?;
+        final parentLoan = allLoans.firstWhere(
+          (l) => l['id'] == sourceId,
+          orElse: () => <String, dynamic>{},
+        );
+        final contactId = parentLoan['contact_id'] as String?;
+        final contact = contactId != null ? contactsMap[contactId] : null;
+        final contactName = contact?['name'] as String? ?? 'Party';
+        final memo = rep['memo'] as String?;
+
+        transactions.add(AnalyticsTransactionItem(
+          id: rep['id'] as String? ?? '',
+          title: (memo != null && memo.trim().isNotEmpty) ? memo.trim() : 'Repayment (Jama)',
+          subtitle: '$contactName • Received Jama',
+          date: rep['_parsed_date'] as DateTime,
+          amount: amt,
+          type: 'repayment',
+          contactName: contactName,
+          paymentMode: rep['payment_mode'] as String?,
+        ));
+      }
+
+      transactions.sort((a, b) => b.date.compareTo(a.date));
+
       final reportData = AnalyticsReportData(
         horizon: horizon,
         startDate: startDate,
@@ -218,6 +297,7 @@ class LocalAnalyticsRepositoryImpl implements AnalyticsRepository {
         pnlTrend: pnlTrend,
         quarterlyBreakdown: quarterlyBreakdown,
         tenYearComparison: tenYearComparison,
+        transactions: transactions,
       );
 
       return right(reportData);
@@ -228,6 +308,7 @@ class LocalAnalyticsRepositoryImpl implements AnalyticsRepository {
 
   Future<({
     Map<String, Map<String, dynamic>> categoriesMap,
+    Map<String, Map<String, dynamic>> contactsMap,
     List<Map<String, dynamic>> allTxns,
     List<Map<String, dynamic>> allLoans,
     List<Map<String, dynamic>> allRepayments,
@@ -237,6 +318,7 @@ class LocalAnalyticsRepositoryImpl implements AnalyticsRepository {
       final catBox = HiveRegistrar.categoriesBox;
       final udharBox = HiveRegistrar.directUdharBox;
       final repaymentBox = HiveRegistrar.repaymentsBox;
+      final contactsBox = HiveRegistrar.contactsBox;
 
       final Map<String, Map<String, dynamic>> categoriesMap = {};
       for (final key in catBox.keys) {
@@ -244,6 +326,15 @@ class LocalAnalyticsRepositoryImpl implements AnalyticsRepository {
         if (data is Map) {
           final cat = Map<String, dynamic>.from(data);
           categoriesMap[cat['id'] as String] = cat;
+        }
+      }
+
+      final Map<String, Map<String, dynamic>> contactsMap = {};
+      for (final key in contactsBox.keys) {
+        final data = contactsBox.get(key);
+        if (data is Map) {
+          final c = Map<String, dynamic>.from(data);
+          contactsMap[c['id'] as String] = c;
         }
       }
 
@@ -273,12 +364,14 @@ class LocalAnalyticsRepositoryImpl implements AnalyticsRepository {
 
       return (
         categoriesMap: categoriesMap,
+        contactsMap: contactsMap,
         allTxns: allTxns,
         allLoans: allLoans,
         allRepayments: allRepayments,
       );
     } else {
       final catRows = await _helper.query('categories');
+      final contactRows = await _helper.query('contacts');
       final txnRows = await _helper.query('family_transactions');
       final loanRows = await _helper.query('direct_udhar_loans');
       final repRows = await _helper.query('repayments');
@@ -289,8 +382,15 @@ class LocalAnalyticsRepositoryImpl implements AnalyticsRepository {
         categoriesMap[cat['id'] as String] = cat;
       }
 
+      final Map<String, Map<String, dynamic>> contactsMap = {};
+      for (final r in contactRows) {
+        final c = Map<String, dynamic>.from(r);
+        contactsMap[c['id'] as String] = c;
+      }
+
       return (
         categoriesMap: categoriesMap,
+        contactsMap: contactsMap,
         allTxns: txnRows.map((r) => Map<String, dynamic>.from(r)).toList(),
         allLoans: loanRows.map((r) => Map<String, dynamic>.from(r)).toList(),
         allRepayments: repRows.map((r) => Map<String, dynamic>.from(r)).toList(),

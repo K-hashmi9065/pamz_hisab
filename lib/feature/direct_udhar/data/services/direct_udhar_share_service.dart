@@ -96,20 +96,71 @@ PAMZ Hisab''';
     final dateFormatter = DateFormat('dd-MM-yyyy');
     final formattedDate = dateFormatter.format(statement.statementDate);
     final contact = statement.contact;
-    final isReceivable = statement.isReceivable;
     final formattedNet = currencyFormatter.format(statement.netOutstandingBalance.abs());
     final formattedDebit = currencyFormatter.format(statement.totalDebit);
     final formattedCredit = currencyFormatter.format(statement.totalCredit);
 
+    final isBuyer = contact.isBuyer;
+    final double netBal = statement.netOutstandingBalance;
+    final String statusHindi;
+    final String statusHinglish;
+    final String statusEnglish;
+
+    if (isBuyer) {
+      if (netBal >= 0) {
+        statusHindi = 'लेना बाकी (Receivable)';
+        statusHinglish = 'Lena baaki (Receivable)';
+        statusEnglish = 'Receivable';
+      } else {
+        statusHindi = 'अग्रिम जमा (Advance)';
+        statusHinglish = 'Advance (Overpaid)';
+        statusEnglish = 'Advance';
+      }
+    } else {
+      if (netBal <= 0) {
+        statusHindi = 'देना बाकी (Payable)';
+        statusHinglish = 'Dena baaki (Payable)';
+        statusEnglish = 'Payable';
+      } else {
+        statusHindi = 'अग्रिम दिया (Advance)';
+        statusHinglish = 'Advance Paid';
+        statusEnglish = 'Advance';
+      }
+    }
+
+    final historyLines = StringBuffer();
+    for (final item in statement.items) {
+      final dateStr = DateFormat('dd MMM yyyy').format(item.date);
+      final amt = item.debit > 0 ? item.debit : item.credit;
+      final bal = item.runningBalance;
+      final String balStr;
+      if (isBuyer) {
+        balStr = bal >= 0
+            ? '${currencyFormatter.format(bal)} (Rec)'
+            : '${currencyFormatter.format(bal.abs())} (Adv)';
+      } else {
+        balStr = bal <= 0
+            ? '${currencyFormatter.format(bal.abs())} (Pay)'
+            : '${currencyFormatter.format(bal)} (Adv)';
+      }
+      historyLines.writeln('• $dateStr: ${item.description} — ${currencyFormatter.format(amt)} | Bal: $balStr');
+    }
+
+    final historyText = historyLines.toString().trim();
+
     switch (language) {
       case ShareLanguage.hindi:
-        final statusText = isReceivable ? 'लेना बाकी (Receivable)' : 'देना बाकी (Payable)';
         return '''*PAMZ Hisab - खाता विवरण (Ledger Statement)*
-नमस्ते ${contact.name} जी,
+नमस्ते ${contact.name} जी (${isBuyer ? "ग्राहक / Buyer" : "सप्लायर / Supplier"}),
 दिनांक: $formattedDate तक का खाता सारांश:
-• कुल दिया गया (Debit): $formattedDebit
-• कुल जमा/प्राप्त (Credit): $formattedCredit
-• शुद्ध बकाया शेष (Net Balance): $formattedNet ($statusText)
+
+*लेन-देन का विवरण (Transaction History):*
+${historyText.isNotEmpty ? historyText : "कोई पुराना लेन-देन नहीं"}
+
+--------------------------------
+• कुल डेबिट: $formattedDebit
+• कुल क्रेडिट: $formattedCredit
+• शुद्ध शेष (Net Balance): $formattedNet ($statusHindi)
 • कुल प्रविष्टियां: ${statement.items.length}
 
 विस्तृत खाता पर्ची (PDF) संलग्न है।
@@ -117,30 +168,38 @@ PAMZ Hisab''';
 PAMZ Hisab''';
 
       case ShareLanguage.hinglish:
-        final statusText = isReceivable ? 'Lena baaki (Receivable)' : 'Dena baaki (Payable)';
         return '''*PAMZ Hisab - Khata Statement*
-Namaste ${contact.name} ji,
+Namaste ${contact.name} ji (${isBuyer ? "Buyer" : "Supplier"}),
 Date: $formattedDate tak aapke khate ka summary:
-• Total Diya gaya (Debit): $formattedDebit
-• Total Jama (Credit): $formattedCredit
-• Net Outstanding: $formattedNet ($statusText)
+
+*Transaction History:*
+${historyText.isNotEmpty ? historyText : "No past transactions recorded"}
+
+--------------------------------
+• Total Debit: $formattedDebit
+• Total Credit/Jama: $formattedCredit
+• Net Outstanding: $formattedNet ($statusHinglish)
 • Total Entries: ${statement.items.length}
 
-Itemized PDF Statement attached hai.
+Detailed PDF Statement attached.
 Shukriya,
 PAMZ Hisab''';
 
       case ShareLanguage.english:
-        final statusText = isReceivable ? 'Receivable' : 'Payable';
         return '''*PAMZ Hisab - Party Ledger Statement*
-Dear ${contact.name},
-Here is your account statement summary as of $formattedDate:
-• Total Debited (Lent): $formattedDebit
-• Total Credited (Repaid): $formattedCredit
-• Net Outstanding: $formattedNet ($statusText)
+Party: ${contact.name} (${isBuyer ? "Buyer" : "Supplier"})
+As of Date: $formattedDate
+
+*Transaction History:*
+${historyText.isNotEmpty ? historyText : "No past transactions recorded"}
+
+--------------------------------
+• Total Debited: $formattedDebit
+• Total Credited: $formattedCredit
+• Net Balance: $formattedNet ($statusEnglish)
 • Total Entries: ${statement.items.length}
 
-Attached: Detailed Itemized PDF Ledger Statement.
+Detailed PDF Statement attached.
 Thank you,
 PAMZ Hisab''';
     }
@@ -166,14 +225,13 @@ PAMZ Hisab''';
         xFile = XFile.fromData(pdfBytes, mimeType: 'application/pdf', name: filename);
       }
 
-      final result = await Share.shareXFiles(
+      await Share.shareXFiles(
         [xFile],
         text: message,
         subject: subject ?? 'Ledger Statement - PAMZ Hisab',
       );
 
-      return result.status == ShareResultStatus.success ||
-          result.status == ShareResultStatus.dismissed;
+      return true;
     } catch (_) {
       return false;
     }

@@ -22,6 +22,15 @@ class AnalyticsScreen extends ConsumerStatefulWidget {
 
 class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   bool _isExporting = false;
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearchOpen = false;
+  String _txnSearchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   final _horizons = const [
     (AnalyticsTimeHorizon.daily, 'Daily'),
@@ -69,6 +78,22 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       appBar: CustomAppBar(
         title: 'Financial Reports & Analytics',
         actions: [
+          IconButton(
+            icon: Icon(
+              _isSearchOpen ? Icons.search_off_rounded : Icons.search_rounded,
+              color: _isSearchOpen ? Theme.of(context).primaryColor : null,
+            ),
+            tooltip: _isSearchOpen ? 'Close Search' : 'Search Transactions',
+            onPressed: () {
+              setState(() {
+                _isSearchOpen = !_isSearchOpen;
+                if (!_isSearchOpen) {
+                  _searchController.clear();
+                  _txnSearchQuery = '';
+                }
+              });
+            },
+          ),
           if (reportAsync.hasValue) ...[
             IconButton(
               icon: _isExporting
@@ -314,6 +339,36 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 _buildSummaryCard(
                   title: 'Udhar Lent / Recovered',
                   value: '${currencyFmt.format(report.summary.totalUdharLent)} / ${currencyFmt.format(report.summary.totalUdharCollected)}',
+                  customValueWidget: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: currencyFmt.format(report.summary.totalUdharLent),
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.debit,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' / ',
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        TextSpan(
+                          text: currencyFmt.format(report.summary.totalUdharCollected),
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.credit,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   subtitle: 'Net Rec: ${currencyFmt.format(report.summary.netUdharReceivable)}',
                   icon: Icons.handshake_outlined,
                   color: AppColors.primary,
@@ -512,7 +567,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               },
             ),
           ),
+          SizedBox(height: AppSpacing.xl.h),
         ],
+
+        // ── 7. All Transaction History ───────────────────────────────────────
+        _buildTransactionHistorySection(report, currencyFmt),
       ],
     );
 
@@ -528,9 +587,251 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     return content;
   }
 
+  Widget _buildTransactionHistorySection(
+    AnalyticsReportData report,
+    NumberFormat currencyFmt,
+  ) {
+    final txns = report.transactions;
+    final dateFormatter = DateFormat('dd MMM yyyy');
+
+    final filteredTxns = txns.where((item) {
+      if (_txnSearchQuery.isEmpty) return true;
+      final q = _txnSearchQuery;
+      final titleMatches = item.title.toLowerCase().contains(q);
+      final subtitleMatches = item.subtitle?.toLowerCase().contains(q) ?? false;
+      final catMatches = item.categoryName?.toLowerCase().contains(q) ?? false;
+      final contactMatches = item.contactName?.toLowerCase().contains(q) ?? false;
+      final amtMatches = item.amount.toString().contains(q);
+      final typeMatches = item.type.toLowerCase().contains(q);
+      return titleMatches || subtitleMatches || catMatches || contactMatches || amtMatches || typeMatches;
+    }).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('All Transaction History', style: AppTextStyles.h3),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.all(4.w),
+                  constraints: const BoxConstraints(),
+                  icon: Icon(
+                    _isSearchOpen ? Icons.search_off_rounded : Icons.search_rounded,
+                    size: 24.r,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                  tooltip: _isSearchOpen ? 'Close Search' : 'Search All Transactions',
+                  onPressed: () {
+                    setState(() {
+                      _isSearchOpen = !_isSearchOpen;
+                      if (!_isSearchOpen) {
+                        _searchController.clear();
+                        _txnSearchQuery = '';
+                      }
+                    });
+                  },
+                ),
+                SizedBox(width: 6.w),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 3.h),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Text(
+                    _txnSearchQuery.isNotEmpty
+                        ? '${filteredTxns.length} / ${txns.length} entries'
+                        : '${txns.length} entries',
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        if (_isSearchOpen) ...[
+          SizedBox(height: AppSpacing.sm.h),
+          TextField(
+            controller: _searchController,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: 'Search by title, contact, note, or amount...',
+              prefixIcon: const Icon(Icons.search_rounded, size: 22),
+              suffixIcon: _txnSearchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear_rounded, size: 20),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _txnSearchQuery = '');
+                      },
+                    )
+                  : null,
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: BorderSide(color: Theme.of(context).dividerColor),
+              ),
+            ),
+            onChanged: (val) => setState(() => _txnSearchQuery = val.trim().toLowerCase()),
+          ),
+        ],
+        SizedBox(height: AppSpacing.sm.h),
+        if (filteredTxns.isEmpty)
+          AppCard(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.lg.h),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.receipt_long_outlined, size: 40.r, color: AppColors.textDisabled),
+                    SizedBox(height: AppSpacing.xs.h),
+                    Text(
+                      _txnSearchQuery.isNotEmpty
+                          ? 'No transactions matching "$_txnSearchQuery"'
+                          : 'No individual transactions found in this period.',
+                      style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+        else
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: filteredTxns.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final item = filteredTxns[index];
+                final isIncome = item.type == 'income';
+                final isExpense = item.type == 'expense';
+                final isUdharLent = item.type == 'udhar_lent';
+                final isUdharBorrowed = item.type == 'udhar_borrowed';
+
+                final Color iconColor;
+                final IconData iconData;
+                final String typeLabel;
+                final String amountPrefix;
+                final Color amountColor;
+
+                if (isIncome) {
+                  iconColor = AppColors.credit;
+                  iconData = Icons.arrow_downward_rounded;
+                  typeLabel = 'INCOME';
+                  amountPrefix = '+';
+                  amountColor = AppColors.credit;
+                } else if (isExpense) {
+                  iconColor = AppColors.debit;
+                  iconData = Icons.arrow_upward_rounded;
+                  typeLabel = 'EXPENSE';
+                  amountPrefix = '-';
+                  amountColor = AppColors.debit;
+                } else if (isUdharLent) {
+                  iconColor = AppColors.debit;
+                  iconData = Icons.outbox_rounded;
+                  typeLabel = 'UDHAR GIVEN';
+                  amountPrefix = '-';
+                  amountColor = AppColors.debit;
+                } else if (isUdharBorrowed) {
+                  iconColor = AppColors.primary;
+                  iconData = Icons.inbox_rounded;
+                  typeLabel = 'UDHAR TAKEN';
+                  amountPrefix = '+';
+                  amountColor = AppColors.primary;
+                } else {
+                  // Repayment
+                  iconColor = AppColors.credit;
+                  iconData = Icons.payments_rounded;
+                  typeLabel = 'JAMA';
+                  amountPrefix = '+';
+                  amountColor = AppColors.credit;
+                }
+
+                return ListTile(
+                  contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: 4.h),
+                  leading: CircleAvatar(
+                    radius: 22.r,
+                    backgroundColor: iconColor.withValues(alpha: 0.12),
+                    child: Icon(iconData, color: iconColor, size: 24.r),
+                  ),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        '$amountPrefix${currencyFmt.format(item.amount)}',
+                        style: AppTextStyles.amount.copyWith(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.bold,
+                          color: amountColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  subtitle: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.h),
+                        decoration: BoxDecoration(
+                          color: iconColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(3.r),
+                        ),
+                        child: Text(
+                          typeLabel,
+                          style: TextStyle(
+                            fontSize: 9.sp,
+                            fontWeight: FontWeight.w800,
+                            color: iconColor,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 6.w),
+                      Expanded(
+                        child: Text(
+                          '${dateFormatter.format(item.date)}${item.subtitle != null && item.subtitle!.isNotEmpty ? " • ${item.subtitle}" : ""}',
+                          style: AppTextStyles.caption.copyWith(
+                            fontSize: 11.sp,
+                            color: AppColors.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        SizedBox(height: AppSpacing.xl.h),
+      ],
+    );
+  }
+
   Widget _buildSummaryCard({
     required String title,
     required String value,
+    Widget? customValueWidget,
     String? subtitle,
     required IconData icon,
     required Color color,
@@ -571,16 +872,17 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
-                child: Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                child: customValueWidget ??
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
               ),
               if (subtitle != null)
                 Text(

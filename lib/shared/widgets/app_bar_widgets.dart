@@ -129,4 +129,25 @@ abstract final class AppSnackbar {
 
   static void showSuccess(BuildContext context, String message) =>
       show(context, message: message);
+
+  static void showInfo(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                color: AppColors.primary,
+                size: AppSpacing.iconMd.w,
+              ),
+              SizedBox(width: AppSpacing.sm.w),
+              Expanded(child: Text(message)),
+            ],
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+  }
 }

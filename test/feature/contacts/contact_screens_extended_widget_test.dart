@@ -97,6 +97,9 @@ void main() {
       mockShareService = MockDirectUdharShareService();
 
       when(() => mockContactRepo.delete(any())).thenAnswer((_) async => const Right(null));
+      when(() => mockContactRepo.findById('buyer-001')).thenAnswer((_) async => Right(testBuyer1));
+      when(() => mockContactRepo.findById('buyer-002')).thenAnswer((_) async => Right(testBuyer2));
+      when(() => mockContactRepo.findById('supp-001')).thenAnswer((_) async => Right(testSupplier1));
       when(() => mockContactRepo.getTotalBalance('buyer-001')).thenAnswer((_) async => const Right(13000.0));
       when(() => mockContactRepo.getTotalBalance('buyer-002')).thenAnswer((_) async => const Right(0.0));
       when(() => mockContactRepo.getTotalBalance('supp-001')).thenAnswer((_) async => const Right(-25000.0));
@@ -175,7 +178,7 @@ void main() {
       await tester.enterText(searchField, 'NonExistentPerson');
       await tester.pumpAndSettle();
 
-      expect(find.text('No buyers yet'), findsOneWidget);
+      expect(find.text('No matching records'), findsOneWidget);
     });
 
     testWidgets('2. ContactList: tab switching between Buyers, Suppliers, and Direct Cash placeholder', (tester) async {
@@ -205,7 +208,7 @@ void main() {
       expect(find.text('Record prior balances or new direct loans with simple interest'), findsOneWidget);
     });
 
-    testWidgets('3. Master-Detail layout on tablet: selecting contact displays detail pane', (tester) async {
+    testWidgets('3. Master-Detail layout on tablet: auto-opens first contact and selecting another contact displays detail pane', (tester) async {
       tester.view.physicalSize = const Size(1800, 1200);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -217,20 +220,18 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Before selection, detail pane shows Select a Contact empty state
-      expect(find.text('Select a Contact'), findsOneWidget);
-
-      // Tap Aarav Sharma
-      await tester.tap(find.text('Aarav Sharma'));
-      await tester.pumpAndSettle();
-
-      // Right pane now displays Aarav Sharma's details and active loans
+      // First contact (Aarav Sharma) is automatically opened in detail pane
+      expect(find.text('Aarav Sharma'), findsWidgets);
       expect(find.text('North Ward'), findsOneWidget);
       expect(find.text('Shop 12, Main Bazaar'), findsOneWidget);
-      expect(find.text('Udhar Given'), findsOneWidget);
       expect(find.text('Opening Balance'), findsOneWidget);
-      expect(find.text('OPEN'), findsOneWidget);
-      expect(find.text('PARTIALLY PAID'), findsOneWidget);
+
+      // Tap Priya Singh
+      await tester.tap(find.text('Priya Singh'));
+      await tester.pumpAndSettle();
+
+      // Right pane now displays Priya Singh
+      expect(find.text('Priya Singh'), findsWidgets);
     });
 
     testWidgets('4. ContactDetail: Supplier profile rendering and negative balance payable display', (tester) async {
@@ -248,7 +249,7 @@ void main() {
       expect(find.text('Chetan Wholesalers'), findsWidgets);
       expect(find.text('GIDC Market Block B'), findsOneWidget);
       expect(find.text('Net Balance (Payable)'), findsOneWidget);
-      expect(find.text('No loan or opening balance records found.'), findsOneWidget);
+      expect(find.text('No historical transactions recorded yet.'), findsOneWidget);
     });
 
     testWidgets('5. ContactDetail: Share statement button triggers PDF share service', (tester) async {

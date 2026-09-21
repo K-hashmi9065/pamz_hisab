@@ -195,8 +195,9 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
                   decoration: InputDecoration(
                     hintText: 'Search by record ID, payload, or entity...',
                     prefixIcon: const Icon(Icons.search_rounded),
+                    isDense: true,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r)),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                   ),
                   onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
                 ),
@@ -210,21 +211,70 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
                         return Padding(
                           padding: EdgeInsets.only(right: 6.w),
                           child: FilterChip(
-                            label: Text(e.$2),
+                            label: Text(
+                              e.$2,
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                fontWeight: isSel ? FontWeight.w700 : FontWeight.w600,
+                                color: isSel ? Colors.white : AppColors.primary,
+                              ),
+                            ),
                             selected: isSel,
+                            showCheckmark: isSel,
+                            checkmarkColor: Colors.white,
+                            backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+                            selectedColor: AppColors.primary,
+                            side: BorderSide(
+                              color: isSel ? AppColors.primary : AppColors.primary.withValues(alpha: 0.25),
+                              width: isSel ? 1.5 : 1.0,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20.r),
+                            ),
+                            padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
                             onSelected: (_) => setState(() => _selectedEntity = e.$1),
                           ),
                         );
                       }),
-                      const SizedBox(width: 8),
+                      Container(
+                        height: 24.h,
+                        width: 1,
+                        margin: EdgeInsets.symmetric(horizontal: 6.w),
+                        color: Theme.of(context).dividerColor,
+                      ),
                       ..._actions.map((a) {
                         final isSel = _selectedAction == a.$1;
+                        final actionColor = switch (a.$1) {
+                          'create' => AppColors.credit,
+                          'update' => AppColors.primary,
+                          'delete' => AppColors.debit,
+                          _ => AppColors.primary,
+                        };
+
                         return Padding(
                           padding: EdgeInsets.only(right: 6.w),
                           child: FilterChip(
-                            label: Text(a.$2),
+                            label: Text(
+                              a.$2,
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                fontWeight: isSel ? FontWeight.w700 : FontWeight.w600,
+                                color: isSel ? Colors.white : actionColor,
+                              ),
+                            ),
                             selected: isSel,
-                            selectedColor: AppColors.primaryLight,
+                            showCheckmark: isSel,
+                            checkmarkColor: Colors.white,
+                            backgroundColor: actionColor.withValues(alpha: 0.08),
+                            selectedColor: actionColor,
+                            side: BorderSide(
+                              color: isSel ? actionColor : actionColor.withValues(alpha: 0.25),
+                              width: isSel ? 1.5 : 1.0,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20.r),
+                            ),
+                            padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
                             onSelected: (_) => setState(() => _selectedAction = a.$1),
                           ),
                         );

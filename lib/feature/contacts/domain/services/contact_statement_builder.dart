@@ -70,17 +70,29 @@ class ContactStatementBuilder {
             ? '${loan.interestRatePercent}%/mo interest'
             : 'Interest-free';
 
+        final cleanMemo = loan.memo?.replaceAll('[Opening Balance]', '').trim();
+        final hasCustomMemo = cleanMemo != null && cleanMemo.isNotEmpty;
+
+        final detailParts = <String>[
+          if (hasCustomMemo) (isOpening ? 'Opening Balance' : (isLent ? 'Udhar Given' : 'Udhar Taken')),
+          if (loan.interestType == InterestType.simple) interestStr,
+        ];
+
         items.add(LedgerStatementItem(
           id: loan.id,
           date: loan.createdAt,
-          description: isOpening
-              ? 'Opening Balance (${isLent ? "Lent" : "Borrowed"})'
-              : 'Direct Udhar (${isLent ? "Lent" : "Borrowed"})',
+          description: hasCustomMemo
+              ? cleanMemo
+              : (isOpening
+                  ? (isLent ? 'Opening Balance (Receivable)' : 'Opening Balance (Payable)')
+                  : (isLent ? 'Udhar Given' : 'Udhar / Purchase Taken')),
           type: isOpening ? 'opening_balance' : (isLent ? 'loan_lent' : 'loan_borrowed'),
           debit: debit,
           credit: credit,
           runningBalance: running,
-          interestDetails: interestStr,
+          interestDetails: detailParts.isNotEmpty
+              ? detailParts.join(' • ')
+              : (loan.interestType == InterestType.simple ? interestStr : null),
         ));
       } else {
         final loan = ev.loan;
@@ -101,24 +113,24 @@ class ContactStatementBuilder {
         totalDebit += debit;
         totalCredit += credit;
 
+        final mode = rep.paymentMode?.toUpperCase() ?? 'CASH';
         items.add(LedgerStatementItem(
           id: rep.id,
           date: rep.paidAt,
           description: isLent
-              ? 'Repayment Received (${rep.paymentMode?.toUpperCase() ?? "CASH"})'
-              : 'Repayment Paid (${rep.paymentMode?.toUpperCase() ?? "CASH"})',
+              ? 'Jama Received ($mode)'
+              : 'Payment Made ($mode)',
           type: 'repayment',
           debit: debit,
           credit: credit,
           runningBalance: running,
-          interestDetails: rep.memo,
+          interestDetails: rep.memo != null && rep.memo!.isNotEmpty ? rep.memo : null,
         ));
       }
     }
 
     // Calculate accrued interest & net total outstanding
     double totalAccruedInterest = 0.0;
-    double netOutstanding = 0.0;
 
     for (final loan in activeLoans) {
       if (loan.status != LoanStatus.closed) {
@@ -130,14 +142,13 @@ class ContactStatementBuilder {
         );
 
         totalAccruedInterest += summary.accruedInterest;
-
-        if (loan.direction == LoanDirection.lent) {
-          netOutstanding += summary.totalOutstanding;
-        } else {
-          netOutstanding -= summary.totalOutstanding;
-        }
       }
     }
+
+    // The net outstanding balance of the ledger is the cumulative running balance + accrued interest
+    final double netOutstanding = items.isNotEmpty
+        ? (running + (contact.isBuyer ? totalAccruedInterest : -totalAccruedInterest))
+        : 0.0;
 
     return ContactLedgerStatement(
       contact: contact,

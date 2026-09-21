@@ -13,6 +13,7 @@ import '../../../../shared/widgets/app_text_field.dart';
 import '../../../contacts/domain/entities/contact.dart';
 import '../../../contacts/presentation/providers/contact_providers.dart';
 import '../../../contacts/presentation/screens/contact_form_screen.dart';
+import '../../../contacts/presentation/services/contact_ledger_share_helper.dart';
 import '../../data/services/direct_udhar_share_service.dart';
 import '../../domain/entities/direct_udhar_loan.dart';
 import '../../domain/services/interest_calculator.dart';
@@ -385,11 +386,12 @@ class _OpeningBalanceFormSheetState
             ),
             SizedBox(height: AppSpacing.lg.h),
 
-            // Section F: Memo
+            // Section F: Title / Purpose / Note
             AppTextField(
-              label: 'Memo / Note (optional)',
-              hint: 'e.g. Previous ledger carry forward',
+              label: 'Title / Purpose / Note (optional)',
+              hint: 'e.g. Kamran ko shopping ke liye, Previous ledger carry forward, etc.',
               controller: _memoCtrl,
+              prefixIcon: const Icon(Icons.title_rounded),
               maxLines: 2,
               textInputAction: TextInputAction.done,
             ),
@@ -637,6 +639,27 @@ class _OpeningBalanceFormSheetState
                             if (mounted) setState(() => _isPdfGenerating = false);
                           }
                         },
+                ),
+                SizedBox(height: AppSpacing.sm.h),
+
+                // Share Complete Ledger Statement
+                AppButton(
+                  label: 'Share Complete Ledger Statement (PDF)',
+                  icon: Icons.share_rounded,
+                  variant: AppButtonVariant.secondary,
+                  isFullWidth: true,
+                  onPressed: () async {
+                    final contactRepo = ref.read(contactRepositoryProvider);
+                    final directUdharRepo = ref.read(directUdharRepositoryProvider);
+                    final shareSvc = ref.read(directUdharShareServiceProvider);
+                    await ContactLedgerShareHelper.shareContactHistory(
+                      context: context,
+                      contactId: contact.id,
+                      contactRepository: contactRepo,
+                      directUdharRepository: directUdharRepo,
+                      shareService: shareSvc,
+                    );
+                  },
                 ),
                 SizedBox(height: AppSpacing.sm.h),
 

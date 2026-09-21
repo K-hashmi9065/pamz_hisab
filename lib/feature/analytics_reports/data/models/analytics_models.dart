@@ -119,6 +119,42 @@ class TenYearComparisonRecord {
   double get netUdharOutstanding => udharLent - udharCollected;
 }
 
+/// Individual detailed transaction item for transaction history under analytics report.
+class AnalyticsTransactionItem {
+  const AnalyticsTransactionItem({
+    required this.id,
+    required this.title,
+    this.subtitle,
+    required this.date,
+    required this.amount,
+    required this.type, // 'income' | 'expense' | 'udhar_lent' | 'udhar_borrowed' | 'repayment'
+    this.categoryName,
+    this.categoryIcon,
+    this.categoryColor,
+    this.contactName,
+    this.paymentMode,
+  });
+
+  final String id;
+  final String title;
+  final String? subtitle;
+  final DateTime date;
+  final double amount;
+  final String type;
+  final String? categoryName;
+  final String? categoryIcon;
+  final String? categoryColor;
+  final String? contactName;
+  final String? paymentMode;
+
+  bool get isIncome => type == 'income';
+  bool get isExpense => type == 'expense';
+  bool get isUdharLent => type == 'udhar_lent';
+  bool get isUdharBorrowed => type == 'udhar_borrowed';
+  bool get isRepayment => type == 'repayment';
+  bool get isPositive => isIncome || isRepayment;
+}
+
 /// Complete aggregated analytics report model.
 class AnalyticsReportData {
   const AnalyticsReportData({
@@ -130,6 +166,7 @@ class AnalyticsReportData {
     required this.pnlTrend,
     required this.quarterlyBreakdown,
     required this.tenYearComparison,
+    this.transactions = const [],
   });
 
   final AnalyticsTimeHorizon horizon;
@@ -140,4 +177,5 @@ class AnalyticsReportData {
   final List<PeriodPnLRecord> pnlTrend;
   final List<QuarterlyBreakdownRecord> quarterlyBreakdown;
   final List<TenYearComparisonRecord> tenYearComparison;
+  final List<AnalyticsTransactionItem> transactions;
 }

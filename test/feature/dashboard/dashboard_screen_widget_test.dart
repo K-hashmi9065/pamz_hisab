@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pamz_khata/core/utils/currency_formatter.dart';
+import 'package:pamz_khata/feature/analytics_reports/data/models/analytics_models.dart';
+import 'package:pamz_khata/feature/analytics_reports/presentation/providers/analytics_providers.dart';
 import 'package:pamz_khata/feature/contacts/presentation/providers/contact_providers.dart';
 import 'package:pamz_khata/feature/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:pamz_khata/feature/direct_udhar/presentation/providers/direct_udhar_providers.dart';
@@ -89,10 +91,20 @@ void main() {
         allTransactionsProvider.overrideWith(
           (ref) async => recentTransactions ?? [testIncomeTxn, testExpenseTxn],
         ),
+        analyticsReportProvider.overrideWith((ref) async => AnalyticsReportData(
+          horizon: AnalyticsTimeHorizon.monthly,
+          startDate: DateTime(2026, 1, 1),
+          endDate: DateTime(2026, 12, 31),
+          summary: FinancialSummaryData.zero,
+          categoryBreakdown: [],
+          pnlTrend: [],
+          quarterlyBreakdown: [],
+          tenYearComparison: [],
+        )),
       ];
     }
 
-    testWidgets('1. Summary cards render Total Income, Total Expense, Net Savings, and Active Contacts', (tester) async {
+    testWidgets('1. Summary cards render Total Income, Total Expense, Net Savings, and Udhar Lent / Recovered', (tester) async {
       tester.view.physicalSize = const Size(1194, 834);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -111,13 +123,12 @@ void main() {
       expect(find.text('Total Income'), findsOneWidget);
       expect(find.text('Total Expense'), findsOneWidget);
       expect(find.text('Net Savings'), findsOneWidget);
-      expect(find.text('Active Contacts'), findsOneWidget);
+      expect(find.text('Udhar Lent / Recovered'), findsOneWidget);
 
-      // Compact formatted values: ₹50.0K, ₹15.0K, ₹35.0K
-      expect(find.text(CurrencyFormatter.formatCompact(50000.0)), findsOneWidget);
-      expect(find.text(CurrencyFormatter.formatCompact(15000.0)), findsOneWidget);
-      expect(find.text(CurrencyFormatter.formatCompact(35000.0)), findsOneWidget);
-      expect(find.text('2'), findsOneWidget); // Active contacts count
+      // Formatted values
+      expect(find.text(CurrencyFormatter.formatIndian(50000.0)), findsOneWidget);
+      expect(find.text(CurrencyFormatter.formatIndian(15000.0)), findsOneWidget);
+      expect(find.text(CurrencyFormatter.formatIndian(35000.0)), findsOneWidget);
     });
 
     testWidgets('2. Quick Action "+ New Udhar" opens DirectUdharFormSheet modal', (tester) async {

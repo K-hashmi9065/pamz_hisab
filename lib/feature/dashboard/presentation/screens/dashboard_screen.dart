@@ -13,7 +13,7 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_states.dart';
 import '../../../../shared/widgets/app_bar_widgets.dart';
-import '../../../contacts/presentation/providers/contact_providers.dart';
+import '../../../analytics_reports/presentation/providers/analytics_providers.dart';
 import '../../../direct_udhar/presentation/widgets/direct_udhar_form_sheet.dart';
 import '../../../family_finance/presentation/providers/family_finance_providers.dart';
 import '../../../family_finance/presentation/widgets/transaction_form_sheet.dart';
@@ -101,12 +101,15 @@ class DashboardScreen extends ConsumerWidget {
     final now = DateTime.now();
     final monthlyExpenseAsync = ref.watch(currentMonthExpenseProvider);
     final monthlyIncomeAsync = ref.watch(currentMonthIncomeProvider);
-    final allContactsAsync = ref.watch(allContactListProvider);
+    final reportAsync = ref.watch(analyticsReportProvider);
 
     final expenseVal = monthlyExpenseAsync.valueOrNull ?? 0.0;
     final incomeVal = monthlyIncomeAsync.valueOrNull ?? 0.0;
     final netSavings = incomeVal - expenseVal;
-    final contactsCount = allContactsAsync.valueOrNull?.length.toDouble() ?? 0.0;
+    final report = reportAsync.valueOrNull;
+    final udharLent = report?.summary.totalUdharLent ?? 0.0;
+    final udharCollected = report?.summary.totalUdharCollected ?? 0.0;
+    final netUdharReceivable = report?.summary.netUdharReceivable ?? (udharLent - udharCollected);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -147,13 +150,38 @@ class DashboardScreen extends ConsumerWidget {
               asyncValue: netSavings,
             ),
             _SummaryCard(
-              title: 'Active Contacts',
-              subtitle: 'Buyers & Suppliers',
-              icon: Icons.people_alt_rounded,
+              title: 'Udhar Lent / Recovered',
+              subtitle: 'Net Rec: ${CurrencyFormatter.formatIndian(netUdharReceivable)}',
+              customValueWidget: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: CurrencyFormatter.formatIndian(udharLent),
+                      style: AppTextStyles.amountLarge.copyWith(
+                        color: AppColors.debit,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    TextSpan(
+                      text: ' / ',
+                      style: AppTextStyles.amountLarge.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    TextSpan(
+                      text: CurrencyFormatter.formatIndian(udharCollected),
+                      style: AppTextStyles.amountLarge.copyWith(
+                        color: AppColors.credit,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              icon: Icons.handshake_outlined,
               iconColor: AppColors.primary,
               valueColor: AppColors.primary,
-              asyncValue: contactsCount,
-              isCount: true,
             ),
           ],
         );
@@ -316,7 +344,7 @@ class _SummaryCard extends StatelessWidget {
     required this.iconColor,
     required this.valueColor,
     this.asyncValue,
-    this.isCount = false,
+    this.customValueWidget,
   });
 
   final String title;
@@ -325,14 +353,12 @@ class _SummaryCard extends StatelessWidget {
   final Color iconColor;
   final Color valueColor;
   final double? asyncValue;
-  final bool isCount;
+  final Widget? customValueWidget;
 
   @override
   Widget build(BuildContext context) {
     final amount = asyncValue ?? 0.0;
-    final display = isCount
-        ? amount.toInt().toString()
-        : CurrencyFormatter.formatIndian(amount);
+    final display = CurrencyFormatter.formatIndian(amount);
 
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -345,12 +371,12 @@ class _SummaryCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: EdgeInsets.all(AppSpacing.xs.w),
+                padding: EdgeInsets.all(AppSpacing.sm.w),
                 decoration: BoxDecoration(
                   color: iconColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppSpacing.radiusSm.r),
                 ),
-                child: Icon(icon, size: AppSpacing.iconMd.w, color: iconColor),
+                child: Icon(icon, size: 28.r, color: iconColor),
               ),
             ],
           ),
@@ -358,13 +384,14 @@ class _SummaryCard extends StatelessWidget {
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(
-              display,
-              style: AppTextStyles.amountLarge.copyWith(
-                color: valueColor,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            child: customValueWidget ??
+                Text(
+                  display,
+                  style: AppTextStyles.amountLarge.copyWith(
+                    color: valueColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
           ),
           SizedBox(height: 2.h),
           Text(

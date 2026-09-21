@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/db/sqlite/app_database.dart';
 import '../../../../core/db/sqlite/database_helper.dart';
 import '../../../../core/db/storage_config.dart';
+import '../../../analytics_reports/presentation/providers/analytics_providers.dart';
 import '../../../contacts/presentation/providers/contact_providers.dart';
 import '../../data/repositories/direct_udhar_hive_repository_impl.dart';
 import '../../data/repositories/direct_udhar_repository_impl.dart';
@@ -85,6 +86,8 @@ class DirectUdharFormNotifier extends StateNotifier<AsyncValue<void>> {
         _ref.invalidate(allContactListProvider);
         _ref.invalidate(contactTotalBalanceProvider(loan.contactId));
         _ref.invalidate(loansByContactProvider(loan.contactId));
+        _ref.invalidate(contactStatementProvider(loan.contactId));
+        _ref.invalidate(analyticsReportProvider);
         return true;
       },
     );
@@ -120,6 +123,8 @@ class DirectUdharFormNotifier extends StateNotifier<AsyncValue<void>> {
         _ref.invalidate(contactTotalBalanceProvider(contactId));
         _ref.invalidate(loansByContactProvider(contactId));
         _ref.invalidate(repaymentsByLoanProvider(loanId));
+        _ref.invalidate(contactStatementProvider(contactId));
+        _ref.invalidate(analyticsReportProvider);
         return true;
       },
     );

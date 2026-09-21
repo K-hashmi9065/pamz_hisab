@@ -306,4 +306,78 @@ void main() {
 
     expect(find.text('No financial records for this period'), findsOneWidget);
   });
+
+  testWidgets('AnalyticsScreen renders All Transaction History section with entries', (tester) async {
+    tester.view.physicalSize = const Size(1180, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final reportWithTxns = AnalyticsReportData(
+      horizon: AnalyticsTimeHorizon.monthly,
+      startDate: DateTime(2026, 4, 1),
+      endDate: DateTime(2026, 4, 30),
+      summary: const FinancialSummaryData(
+        totalIncome: 10000,
+        totalExpense: 3000,
+        totalUdharLent: 5000,
+        totalUdharCollected: 0,
+        totalUdharBorrowed: 0,
+        totalUdharRepaid: 0,
+      ),
+      categoryBreakdown: [],
+      pnlTrend: [
+        PeriodPnLRecord(
+          periodLabel: 'Apr 2026',
+          date: DateTime(2026, 4, 1),
+          income: 10000,
+          expense: 3000,
+        ),
+      ],
+      quarterlyBreakdown: [],
+      tenYearComparison: [],
+      transactions: [
+        AnalyticsTransactionItem(
+          id: 't-1',
+          title: 'Wheat Harvest Sale',
+          subtitle: 'Agriculture Income',
+          date: DateTime(2026, 4, 15),
+          amount: 10000,
+          type: 'income',
+        ),
+        AnalyticsTransactionItem(
+          id: 't-2',
+          title: 'Kamran ko dhopning ke liye',
+          subtitle: 'Kamran • Udhar Given',
+          date: DateTime(2026, 4, 18),
+          amount: 5000,
+          type: 'udhar_lent',
+        ),
+      ],
+    );
+
+    await pumpApp(
+      tester,
+      const AnalyticsScreen(),
+      overrides: [
+        analyticsReportProvider.overrideWith((ref) async => reportWithTxns),
+      ],
+    );
+
+    expect(find.text('All Transaction History'), findsOneWidget);
+    expect(find.text('2 entries'), findsOneWidget);
+    expect(find.text('Wheat Harvest Sale'), findsOneWidget);
+    expect(find.text('Kamran ko dhopning ke liye'), findsOneWidget);
+
+    // Test Search Filtering
+    await tester.tap(find.byTooltip('Search All Transactions'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'Kamran');
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 / 2 entries'), findsOneWidget);
+    expect(find.text('Kamran ko dhopning ke liye'), findsOneWidget);
+    expect(find.text('Wheat Harvest Sale'), findsNothing);
+  });
 }

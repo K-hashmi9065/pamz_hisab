@@ -20,6 +20,7 @@ class AppTextField extends StatelessWidget {
     this.minLines,
     this.prefixText,
     this.prefix,
+    this.prefixIcon,
     this.suffix,
     this.suffixIcon,
     this.autofocus = false,
@@ -44,6 +45,7 @@ class AppTextField extends StatelessWidget {
   final int? minLines;
   final String? prefixText;
   final Widget? prefix;
+  final Widget? prefixIcon;
   final Widget? suffix;
   final Widget? suffixIcon;
   final bool autofocus;
@@ -79,6 +81,7 @@ class AppTextField extends StatelessWidget {
         hintText: hint,
         prefixText: prefixText,
         prefix: prefix,
+        prefixIcon: prefixIcon,
         suffix: suffix,
         suffixIcon: suffixIcon,
         counterText: '', // hide built-in counter

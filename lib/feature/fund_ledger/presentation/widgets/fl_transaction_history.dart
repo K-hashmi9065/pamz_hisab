@@ -8,6 +8,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/entities/fl_transaction.dart';
 import '../providers/fl_transaction_providers.dart';
 import 'fl_transaction_tile.dart';
+import 'fl_edit_transaction_form.dart';
 
 /// Transaction history component for a contact with filtering, loading, and deletion support.
 class FLTransactionHistory extends ConsumerStatefulWidget {
@@ -139,6 +140,7 @@ class _FLTransactionHistoryState extends ConsumerState<FLTransactionHistory> {
                 final txn = filtered[index];
                 return FLTransactionTile(
                   transaction: txn,
+                  onEdit: () => FLEditTransactionForm.show(context, txn),
                   onDelete: () => _confirmDelete(context, txn),
                 );
               },

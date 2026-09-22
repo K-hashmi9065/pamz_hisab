@@ -13,11 +13,13 @@ class FLTransactionTile extends StatelessWidget {
     super.key,
     required this.transaction,
     this.onTap,
+    this.onEdit,
     this.onDelete,
   });
 
   final FLTransaction transaction;
   final VoidCallback? onTap;
+  final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
   @override
@@ -51,11 +53,15 @@ class FLTransactionTile extends StatelessWidget {
     };
 
     final titleText = switch (transaction.type) {
-      FLTransactionType.received => 'Fund Received',
+      FLTransactionType.received => transaction.title?.isNotEmpty == true
+          ? transaction.title!
+          : 'Fund Received • ${transaction.txnDate}',
       FLTransactionType.utilized => transaction.title?.isNotEmpty == true
           ? transaction.title!
           : 'Fund Utilized',
-      FLTransactionType.returned => 'Fund Returned',
+      FLTransactionType.returned => transaction.title?.isNotEmpty == true
+          ? transaction.title!
+          : 'Fund Returned • ${transaction.txnDate}',
     };
 
     final subtitleParts = <String>[];
@@ -153,13 +159,26 @@ class FLTransactionTile extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.edit_outlined,
+                            size: 18.r,
+                            color: AppColors.textSecondary,
+                          ),
+                          tooltip: 'Edit transaction',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: onEdit,
+                        ),
+                        SizedBox(width: 12.w),
                         if (onDelete != null)
                           IconButton(
                             icon: Icon(
                               Icons.delete_outline_rounded,
                               size: 18.r,
-                              color: AppColors.textDisabled,
+                              color: AppColors.error,
                             ),
+                            tooltip: 'Delete transaction',
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                             onPressed: onDelete,

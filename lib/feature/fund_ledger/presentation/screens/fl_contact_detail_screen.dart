@@ -12,6 +12,7 @@ import '../providers/fl_transaction_providers.dart';
 import '../widgets/fl_contact_detail_header.dart';
 import '../widgets/fl_transaction_history.dart';
 import 'fl_contact_form_screen.dart';
+import 'fl_pdf_preview_screen.dart';
 
 /// Comprehensive detail screen for a Fund Ledger contact showing balance,
 /// action buttons, statement export, and transaction history.
@@ -24,7 +25,8 @@ class FLContactDetailScreen extends ConsumerStatefulWidget {
   final String contactId;
 
   @override
-  ConsumerState<FLContactDetailScreen> createState() => _FLContactDetailScreenState();
+  ConsumerState<FLContactDetailScreen> createState() =>
+      _FLContactDetailScreenState();
 }
 
 class _FLContactDetailScreenState extends ConsumerState<FLContactDetailScreen> {
@@ -33,11 +35,20 @@ class _FLContactDetailScreenState extends ConsumerState<FLContactDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final contactAsync = ref.watch(flContactByIdProvider(widget.contactId));
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: AppColors.primaryDark,
+        foregroundColor: AppColors.onPrimary,
+        flexibleSpace: const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.primaryDark, AppColors.primary],
+            ),
+          ),
+        ),
         title: contactAsync.when(
           loading: () => const Text('Loading...'),
           error: (_, __) => const Text('Contact Details'),
@@ -47,14 +58,14 @@ class _FLContactDetailScreenState extends ConsumerState<FLContactDetailScreen> {
               Text(
                 contact?.name ?? 'Contact Details',
                 style: AppTextStyles.h2.copyWith(
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                  color: AppColors.onPrimary,
                 ),
               ),
               if (contact?.mobileNumber.isNotEmpty == true)
                 Text(
                   contact!.mobileNumber,
                   style: AppTextStyles.caption.copyWith(
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                    color: AppColors.onPrimary.withAlpha(200),
                   ),
                 ),
             ],
@@ -80,11 +91,7 @@ class _FLContactDetailScreenState extends ConsumerState<FLContactDetailScreen> {
             onPressed: () {
               final contact = contactAsync.asData?.value;
               if (contact != null) {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => FLContactFormScreen(contact: contact),
-                  ),
-                );
+                showFLContactFormBottomSheet(context, contact: contact);
               }
             },
           ),
@@ -98,9 +105,11 @@ class _FLContactDetailScreenState extends ConsumerState<FLContactDetailScreen> {
                 value: 'delete',
                 child: Row(
                   children: [
-                    Icon(Icons.delete_outline, color: AppColors.error, size: 20),
+                    Icon(Icons.delete_outline,
+                        color: AppColors.error, size: 20),
                     SizedBox(width: 8),
-                    Text('Delete Contact', style: TextStyle(color: AppColors.error)),
+                    Text('Delete Contact',
+                        style: TextStyle(color: AppColors.error)),
                   ],
                 ),
               ),
@@ -137,15 +146,21 @@ class _FLContactDetailScreenState extends ConsumerState<FLContactDetailScreen> {
   Future<void> _exportStatement() async {
     setState(() => _isExporting = true);
     try {
-      final contact = ref.read(flContactByIdProvider(widget.contactId)).asData?.value;
-      final summary = ref.read(flContactSummaryProvider(widget.contactId)).asData?.value;
-      final transactions =
-          ref.read(flTransactionHistoryProvider(widget.contactId)).asData?.value ?? [];
+      final contact =
+          ref.read(flContactByIdProvider(widget.contactId)).asData?.value;
+      final summary =
+          ref.read(flContactSummaryProvider(widget.contactId)).asData?.value;
+      final transactions = ref
+              .read(flTransactionHistoryProvider(widget.contactId))
+              .asData
+              ?.value ??
+          [];
 
       if (contact == null || summary == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Unable to generate statement: data missing')),
+            const SnackBar(
+                content: Text('Unable to generate statement: data missing')),
           );
         }
         return;
@@ -160,6 +175,8 @@ class _FLContactDetailScreenState extends ConsumerState<FLContactDetailScreen> {
             .map((t) => FLShareEntry(
                   date: t.txnDate,
                   amount: t.amount,
+                  type: 'Received',
+                  createdAt: t.createdAt.toIso8601String(),
                   paymentMode: t.paymentMode,
                   paymentReference: t.paymentReference,
                 ))
@@ -169,19 +186,18 @@ class _FLContactDetailScreenState extends ConsumerState<FLContactDetailScreen> {
             .map((t) => FLShareEntry(
                   date: t.txnDate,
                   amount: t.amount,
+                  type: 'Returned',
+                  createdAt: t.createdAt.toIso8601String(),
                   paymentMode: t.paymentMode,
                   paymentReference: t.paymentReference,
                 ))
             .toList(),
       );
 
-      final shareService = ref.read(flShareServiceProvider);
-      final success = await shareService.shareStatement(shareStatement);
-      if (!success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not share statement'),
-            backgroundColor: AppColors.error,
+      if (mounted) {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => FLPdfPreviewScreen(statement: shareStatement),
           ),
         );
       }

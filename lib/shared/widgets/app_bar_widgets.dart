@@ -34,15 +34,36 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
+      backgroundColor: AppColors.primaryDark,
+      foregroundColor: AppColors.onPrimary,
+      flexibleSpace: const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppColors.primaryDark, AppColors.primary],
+          ),
+        ),
+      ),
       title: subtitle != null
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: AppTextStyles.h2),
-                Text(subtitle!, style: AppTextStyles.caption),
+                Text(
+                  title,
+                  style: AppTextStyles.h2.copyWith(color: AppColors.onPrimary),
+                ),
+                Text(
+                  subtitle!,
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.onPrimary),
+                ),
               ],
             )
-          : Text(title, style: AppTextStyles.h2),
+          : Text(
+              title,
+              style: AppTextStyles.h2.copyWith(color: AppColors.onPrimary),
+            ),
       leading: showBack
           ? IconButton(
               icon: const Icon(Icons.arrow_back_ios_new_rounded),

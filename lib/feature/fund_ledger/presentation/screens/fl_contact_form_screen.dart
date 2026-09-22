@@ -10,6 +10,28 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/entities/fl_contact.dart';
 import '../providers/fl_contact_providers.dart';
 
+Future<void> showFLContactFormBottomSheet(
+  BuildContext context, {
+  FLContact? contact,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    constraints: BoxConstraints(
+      maxWidth: 720,
+      maxHeight: MediaQuery.sizeOf(context).height * 0.92,
+    ),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    clipBehavior: Clip.antiAlias,
+    showDragHandle: true,
+    builder: (_) => FLContactFormScreen(contact: contact),
+  );
+}
+
 /// Screen to create a new Fund Ledger contact or edit an existing one.
 class FLContactFormScreen extends ConsumerStatefulWidget {
   const FLContactFormScreen({
@@ -20,7 +42,8 @@ class FLContactFormScreen extends ConsumerStatefulWidget {
   final FLContact? contact;
 
   @override
-  ConsumerState<FLContactFormScreen> createState() => _FLContactFormScreenState();
+  ConsumerState<FLContactFormScreen> createState() =>
+      _FLContactFormScreenState();
 }
 
 class _FLContactFormScreenState extends ConsumerState<FLContactFormScreen> {
@@ -36,9 +59,12 @@ class _FLContactFormScreenState extends ConsumerState<FLContactFormScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.contact?.name ?? '');
-    _mobileController = TextEditingController(text: widget.contact?.mobileNumber ?? '');
-    _aadhaarController = TextEditingController(text: widget.contact?.aadhaarNumber ?? '');
-    _projectController = TextEditingController(text: widget.contact?.project ?? '');
+    _mobileController =
+        TextEditingController(text: widget.contact?.mobileNumber ?? '');
+    _aadhaarController =
+        TextEditingController(text: widget.contact?.aadhaarNumber ?? '');
+    _projectController =
+        TextEditingController(text: widget.contact?.project ?? '');
   }
 
   @override
@@ -54,15 +80,24 @@ class _FLContactFormScreenState extends ConsumerState<FLContactFormScreen> {
   Widget build(BuildContext context) {
     final formState = ref.watch(flContactFormNotifierProvider);
     final isLoading = formState.isLoading;
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: AppColors.primaryDark,
+        foregroundColor: AppColors.onPrimary,
+        flexibleSpace: const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.primaryDark, AppColors.primary],
+            ),
+          ),
+        ),
         title: Text(
           _isEditing ? 'Edit Contact' : 'New Contact',
           style: AppTextStyles.h2.copyWith(
-            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+            color: AppColors.onPrimary,
           ),
         ),
         actions: [
@@ -79,7 +114,7 @@ class _FLContactFormScreenState extends ConsumerState<FLContactFormScreen> {
                   : Text(
                       'Save',
                       style: AppTextStyles.button.copyWith(
-                        color: AppColors.primary,
+                        color: AppColors.onPrimary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -89,7 +124,12 @@ class _FLContactFormScreenState extends ConsumerState<FLContactFormScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(AppSpacing.lg.r),
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.lg.r,
+            AppSpacing.lg.r,
+            AppSpacing.lg.r,
+            AppSpacing.lg.r + MediaQuery.viewInsetsOf(context).bottom,
+          ),
           child: Form(
             key: _formKey,
             child: Column(
@@ -174,7 +214,8 @@ class _FLContactFormScreenState extends ConsumerState<FLContactFormScreen> {
                 FilledButton(
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
+                    minimumSize: const Size(0, 56),
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
                   ),
                   onPressed: isLoading ? null : _submit,
                   child: isLoading
@@ -188,7 +229,8 @@ class _FLContactFormScreenState extends ConsumerState<FLContactFormScreen> {
                         )
                       : Text(
                           _isEditing ? 'Update Contact' : 'Create Contact',
-                          style: AppTextStyles.button.copyWith(color: Colors.white),
+                          style: AppTextStyles.button
+                              .copyWith(color: Colors.white),
                         ),
                 ),
               ],
@@ -204,8 +246,12 @@ class _FLContactFormScreenState extends ConsumerState<FLContactFormScreen> {
 
     final name = _nameController.text.trim();
     final mobile = _mobileController.text.trim();
-    final aadhaar = _aadhaarController.text.trim().isEmpty ? null : _aadhaarController.text.trim();
-    final project = _projectController.text.trim().isEmpty ? null : _projectController.text.trim();
+    final aadhaar = _aadhaarController.text.trim().isEmpty
+        ? null
+        : _aadhaarController.text.trim();
+    final project = _projectController.text.trim().isEmpty
+        ? null
+        : _projectController.text.trim();
 
     final notifier = ref.read(flContactFormNotifierProvider.notifier);
     final messenger = ScaffoldMessenger.of(context);

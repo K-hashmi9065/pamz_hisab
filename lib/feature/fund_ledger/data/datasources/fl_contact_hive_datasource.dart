@@ -2,6 +2,7 @@ import 'package:hive/hive.dart';
 
 import '../../../../core/db/hive/hive_registrar.dart';
 import '../../../../core/utils/app_date_utils.dart';
+import '../../../../core/db/audit/audit_logger.dart';
 import '../models/fl_contact_model.dart';
 import 'fl_contact_datasource.dart';
 
@@ -44,11 +45,23 @@ class FLContactHiveDataSource implements FLContactDataSource {
   @override
   Future<void> insert(FLContactModel model) async {
     await _box.put(model.id, model.toMap());
+    await AuditLogger.record(
+      entityType: 'fl_contacts',
+      entityId: model.id,
+      action: 'create',
+      metadata: {'name': model.name, 'mobile_number': model.mobileNumber},
+    );
   }
 
   @override
   Future<void> update(FLContactModel model) async {
     await _box.put(model.id, model.toMap());
+    await AuditLogger.record(
+      entityType: 'fl_contacts',
+      entityId: model.id,
+      action: 'update',
+      metadata: {'name': model.name, 'mobile_number': model.mobileNumber},
+    );
   }
 
   @override
@@ -59,5 +72,10 @@ class FLContactHiveDataSource implements FLContactDataSource {
     map['is_deleted'] = 1;
     map['updated_at'] = AppDateUtils.toIso(DateTime.now());
     await _box.put(id, map);
+    await AuditLogger.record(
+      entityType: 'fl_contacts',
+      entityId: id,
+      action: 'delete',
+    );
   }
 }

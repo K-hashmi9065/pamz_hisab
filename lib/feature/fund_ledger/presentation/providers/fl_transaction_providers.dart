@@ -14,6 +14,7 @@ import '../../domain/entities/fl_dashboard_summary.dart';
 import '../../domain/entities/fl_transaction.dart';
 import '../../domain/repositories/fl_transaction_repository.dart';
 import '../../domain/usecases/fl_transaction_usecases.dart';
+import 'fl_contact_providers.dart';
 
 // ─── Infrastructure Providers ──────────────────────────────────────────────
 
@@ -125,16 +126,20 @@ class FLReportsFilter {
 
   FLReportsFilter copyWith({
     FLTransactionType? type,
+    bool clearType = false,
     String? contactId,
+    bool clearContactId = false,
     DateTime? from,
+    bool clearFrom = false,
     DateTime? to,
+    bool clearTo = false,
     String? searchQuery,
   }) {
     return FLReportsFilter(
-      type: type ?? this.type,
-      contactId: contactId ?? this.contactId,
-      from: from ?? this.from,
-      to: to ?? this.to,
+      type: clearType ? null : type ?? this.type,
+      contactId: clearContactId ? null : contactId ?? this.contactId,
+      from: clearFrom ? null : from ?? this.from,
+      to: clearTo ? null : to ?? this.to,
       searchQuery: searchQuery ?? this.searchQuery,
     );
   }
@@ -143,8 +148,7 @@ class FLReportsFilter {
 final flReportsFilterProvider =
     StateProvider<FLReportsFilter>((ref) => const FLReportsFilter());
 
-final flReportsListProvider =
-    FutureProvider<List<FLTransaction>>((ref) async {
+final flReportsListProvider = FutureProvider<List<FLTransaction>>((ref) async {
   final filter = ref.watch(flReportsFilterProvider);
   final usecase = ref.watch(getAllFLTransactionsUsecaseProvider);
   final result = await usecase(
@@ -164,6 +168,39 @@ final flReportsListProvider =
         txn.amount.toString().contains(q) ||
         txn.txnDate.contains(q);
   }).toList();
+});
+
+/// Report totals intentionally ignore the type filter so summary cards remain
+/// stable while the transaction list is filtered by type.
+final flReportsTotalsProvider = FutureProvider<FLContactTotals>((ref) async {
+  final filter = ref.watch(flReportsFilterProvider);
+  final usecase = ref.watch(getAllFLTransactionsUsecaseProvider);
+  final result = await usecase(
+    contactId: filter.contactId,
+    from: filter.from,
+    to: filter.to,
+  );
+  final transactions = result.getOrElse((_) => <FLTransaction>[]);
+  var totalReceived = 0.0;
+  var totalUtilized = 0.0;
+  var totalReturned = 0.0;
+
+  for (final transaction in transactions) {
+    switch (transaction.type) {
+      case FLTransactionType.received:
+        totalReceived += transaction.amount;
+      case FLTransactionType.utilized:
+        totalUtilized += transaction.amount;
+      case FLTransactionType.returned:
+        totalReturned += transaction.amount;
+    }
+  }
+
+  return FLContactTotals(
+    totalReceived: totalReceived,
+    totalUtilized: totalUtilized,
+    totalReturned: totalReturned,
+  );
 });
 
 // ─── Transaction Form Notifier ──────────────────────────────────────────────
@@ -213,6 +250,7 @@ class FLTransactionFormNotifier extends StateNotifier<AsyncValue<void>> {
       (_) {
         state = const AsyncValue.data(null);
         _ref.invalidate(flTransactionHistoryProvider(contactId));
+        _ref.invalidate(flContactSummaryProvider(contactId));
         _ref.invalidate(flDashboardSummaryProvider);
         _ref.invalidate(flReportsListProvider);
         return true;
@@ -232,6 +270,27 @@ class FLTransactionFormNotifier extends StateNotifier<AsyncValue<void>> {
       (_) {
         state = const AsyncValue.data(null);
         _ref.invalidate(flTransactionHistoryProvider(contactId));
+        _ref.invalidate(flContactSummaryProvider(contactId));
+        _ref.invalidate(flDashboardSummaryProvider);
+        _ref.invalidate(flReportsListProvider);
+        return true;
+      },
+    );
+  }
+
+  Future<bool> update(FLTransaction transaction) async {
+    state = const AsyncValue.loading();
+    final result =
+        await _ref.read(flTransactionRepositoryProvider).update(transaction);
+    return result.fold(
+      (failure) {
+        state = AsyncValue.error(failure.message, StackTrace.current);
+        return false;
+      },
+      (_) {
+        state = const AsyncValue.data(null);
+        _ref.invalidate(flTransactionHistoryProvider(transaction.contactId));
+        _ref.invalidate(flContactSummaryProvider(transaction.contactId));
         _ref.invalidate(flDashboardSummaryProvider);
         _ref.invalidate(flReportsListProvider);
         return true;

@@ -54,6 +54,16 @@ class FLTransactionRepositoryImpl implements FLTransactionRepository {
   }
 
   @override
+  Future<Either<Failure, void>> update(FLTransaction transaction) async {
+    try {
+      await _dataSource.update(FLTransactionModel.fromEntity(transaction));
+      return const Right(null);
+    } catch (e) {
+      return Left(DatabaseFailure(technicalDetail: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> softDelete(String id) async {
     try {
       await _dataSource.softDelete(id);

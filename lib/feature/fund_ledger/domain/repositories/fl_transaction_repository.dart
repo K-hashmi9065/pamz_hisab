@@ -20,6 +20,8 @@ abstract interface class FLTransactionRepository {
   /// Inserts a new transaction.
   Future<Either<Failure, void>> insert(FLTransaction transaction);
 
+  Future<Either<Failure, void>> update(FLTransaction transaction);
+
   /// Soft-deletes a transaction.
   Future<Either<Failure, void>> softDelete(String id);
 

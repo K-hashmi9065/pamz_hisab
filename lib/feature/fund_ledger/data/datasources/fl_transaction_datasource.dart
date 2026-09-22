@@ -18,6 +18,8 @@ abstract interface class FLTransactionDataSource {
   /// Inserts a new transaction.
   Future<void> insert(FLTransactionModel model);
 
+  Future<void> update(FLTransactionModel model);
+
   /// Soft-deletes a transaction.
   Future<void> softDelete(String id);
 

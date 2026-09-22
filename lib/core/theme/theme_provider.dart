@@ -1,24 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-
 import '../db/hive/hive_registrar.dart';
 
 const String _kThemeModeKey = 'app_theme_mode';
 
-/// Riverpod Notifier for managing app theme mode with persistent storage in Hive.
+/// Riverpod Notifier for managing the current app theme mode.
 class ThemeModeNotifier extends Notifier<ThemeMode> {
   @override
   ThemeMode build() {
-    try {
-      final box = HiveRegistrar.settingsBox;
-      final savedMode = box.get(_kThemeModeKey) as String?;
-      if (savedMode == 'dark') return ThemeMode.dark;
-      if (savedMode == 'light') return ThemeMode.light;
-      if (savedMode == 'system') return ThemeMode.system;
-    } catch (_) {
-      // Fallback to light mode if storage read fails
-    }
+    // Always start a new app session in light mode. Users can still switch to
+    // dark or system mode from Settings while the app is open.
     return ThemeMode.light;
   }
 

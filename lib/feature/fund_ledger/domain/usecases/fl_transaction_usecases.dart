@@ -76,16 +76,6 @@ class AddFLTransactionUsecase {
           field: 'paymentMode',
         ));
       }
-      if (FLPaymentMode.requiresReference(mode)) {
-        final ref = transaction.paymentReference?.trim() ?? '';
-        if (ref.isEmpty) {
-          final label = FLPaymentMode.referenceLabel(mode)!;
-          return Left(ValidationFailure(
-            message: '$label is required.',
-            field: 'paymentReference',
-          ));
-        }
-      }
     }
 
     // Utilized: title required
@@ -111,8 +101,7 @@ class AddFLTransactionUsecase {
       );
       if (!canContinue) {
         return const Left(ValidationFailure(
-          message:
-              'Return amount exceeds the available balance. '
+          message: 'Return amount exceeds the available balance. '
               'Available = Total Received − Total Returned.',
           field: 'amount',
         ));
@@ -166,6 +155,5 @@ class DeleteFLTransactionUsecase {
   const DeleteFLTransactionUsecase(this._repository);
   final FLTransactionRepository _repository;
 
-  Future<Either<Failure, void>> call(String id) =>
-      _repository.softDelete(id);
+  Future<Either<Failure, void>> call(String id) => _repository.softDelete(id);
 }

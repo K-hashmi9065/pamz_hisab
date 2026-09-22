@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../../../core/db/sqlite/database_helper.dart';
 import '../../../../core/utils/app_date_utils.dart';
+import '../../../../core/db/audit/audit_logger.dart';
 import '../../domain/entities/fl_transaction.dart';
 import '../../domain/repositories/fl_transaction_repository.dart';
 import '../models/fl_transaction_model.dart';
@@ -68,6 +69,32 @@ class FLTransactionSqliteDataSource implements FLTransactionDataSource {
       model.toMap(),
       conflictAlgorithm: ConflictAlgorithm.fail,
     );
+    await AuditLogger.record(
+      entityType: 'fl_transactions',
+      entityId: model.id,
+      action: 'create',
+      metadata: {
+        'type': model.type,
+        'amount': model.amount,
+        'contact_id': model.contactId,
+      },
+    );
+  }
+
+  @override
+  Future<void> update(FLTransactionModel model) async {
+    await _db.update(
+      _table,
+      model.toMap(),
+      where: 'id = ?',
+      whereArgs: [model.id],
+    );
+    await AuditLogger.record(
+      entityType: 'fl_transactions',
+      entityId: model.id,
+      action: 'update',
+      metadata: {'type': model.type, 'amount': model.amount},
+    );
   }
 
   @override
@@ -80,6 +107,11 @@ class FLTransactionSqliteDataSource implements FLTransactionDataSource {
       },
       where: 'id = ?',
       whereArgs: [id],
+    );
+    await AuditLogger.record(
+      entityType: 'fl_transactions',
+      entityId: id,
+      action: 'delete',
     );
   }
 

@@ -44,15 +44,12 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
   String _searchQuery = '';
   String _selectedEntity = 'all';
   String _selectedAction = 'all';
+  final _filterScrollController = ScrollController();
 
   final _entities = const [
     ('all', 'All Entities'),
-    ('contacts', 'Contacts'),
-    ('direct_udhar_loans', 'Udhar Loans'),
-    ('repayments', 'Repayments'),
-    ('family_transactions', 'Family Txns'),
-    ('budgets', 'Budgets'),
-    ('categories', 'Categories'),
+    ('fl_contacts', 'Fund Contacts'),
+    ('fl_transactions', 'Fund Transactions'),
   ];
 
   final _actions = const [
@@ -66,7 +63,8 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
     Map<String, dynamic>? parsedJson;
     if (item.changedFieldsJson != null) {
       try {
-        parsedJson = jsonDecode(item.changedFieldsJson!) as Map<String, dynamic>?;
+        parsedJson =
+            jsonDecode(item.changedFieldsJson!) as Map<String, dynamic>?;
       } catch (_) {}
     }
 
@@ -82,7 +80,8 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
             Expanded(
               child: Text(
                 'Audit: ${item.entityType}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
           ],
@@ -97,7 +96,8 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
               _detailRow('Record ID', item.entityId),
               _detailRow('Audit ID', item.id),
               const Divider(),
-              const Text('Changed Fields / Metadata:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('Changed Fields / Metadata:',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
               SizedBox(height: 6.h),
               if (parsedJson != null) ...[
                 Container(
@@ -115,7 +115,9 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('${e.key}: ', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            Text('${e.key}: ',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600)),
                             Expanded(child: Text('${e.value}')),
                           ],
                         ),
@@ -125,7 +127,8 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
                 ),
               ] else ...[
                 Text(
-                  item.changedFieldsJson ?? 'No detailed payload recorded for this action.',
+                  item.changedFieldsJson ??
+                      'No detailed payload recorded for this action.',
                   style: const TextStyle(color: AppColors.textSecondary),
                 ),
               ],
@@ -142,14 +145,25 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
     );
   }
 
+  @override
+  void dispose() {
+    _filterScrollController.dispose();
+    super.dispose();
+  }
+
   Widget _detailRow(String label, String value) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 3.h),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 90.w, child: Text('$label:', style: const TextStyle(color: AppColors.textSecondary))),
-          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500))),
+          SizedBox(
+              width: 90.w,
+              child: Text('$label:',
+                  style: const TextStyle(color: AppColors.textSecondary))),
+          Expanded(
+              child: Text(value,
+                  style: const TextStyle(fontWeight: FontWeight.w500))),
         ],
       ),
     );
@@ -157,10 +171,26 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
 
   Widget _buildActionBadge(String action) {
     final (label, color, bg) = switch (action.toLowerCase()) {
-      'create' => ('CREATE', AppColors.credit, AppColors.creditLight.withValues(alpha: 0.3)),
-      'update' => ('UPDATE', AppColors.primary, AppColors.primaryLight.withValues(alpha: 0.3)),
-      'delete' => ('DELETE', AppColors.debit, AppColors.debitLight.withValues(alpha: 0.3)),
-      _ => (action.toUpperCase(), AppColors.textSecondary, AppColors.cardBackground),
+      'create' => (
+          'CREATE',
+          AppColors.credit,
+          AppColors.creditLight.withValues(alpha: 0.3)
+        ),
+      'update' => (
+          'UPDATE',
+          AppColors.primary,
+          AppColors.primaryLight.withValues(alpha: 0.3)
+        ),
+      'delete' => (
+          'DELETE',
+          AppColors.debit,
+          AppColors.debitLight.withValues(alpha: 0.3)
+        ),
+      _ => (
+          action.toUpperCase(),
+          AppColors.textSecondary,
+          AppColors.cardBackground
+        ),
     };
 
     return Container(
@@ -172,7 +202,8 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: color),
+        style: TextStyle(
+            fontSize: 10.sp, fontWeight: FontWeight.bold, color: color),
       ),
     );
   }
@@ -181,184 +212,203 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
   Widget build(BuildContext context) {
     final logsAsync = ref.watch(auditLogsProvider);
     final dateFmt = DateFormat('dd MMM yyyy, hh:mm a');
-    final isWide = MediaQuery.of(context).size.width >= AppConstants.tabletBreakpoint;
+    final isWide =
+        MediaQuery.of(context).size.width >= AppConstants.tabletBreakpoint;
 
     final content = Column(
-        children: [
-          // Filter & Search Controls
-          Container(
-            color: Theme.of(context).cardColor,
-            padding: EdgeInsets.all(AppSpacing.md.w),
-            child: Column(
-              children: [
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search by record ID, payload, or entity...',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    isDense: true,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r)),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-                  ),
-                  onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
+      children: [
+        // Filter & Search Controls
+        Container(
+          color: Theme.of(context).cardColor,
+          padding: EdgeInsets.all(AppSpacing.md.w),
+          child: Column(
+            children: [
+              TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search by record ID, payload, or entity...',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  isDense: true,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r)),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                 ),
-                SizedBox(height: AppSpacing.sm.h),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      ..._entities.map((e) {
-                        final isSel = _selectedEntity == e.$1;
-                        return Padding(
-                          padding: EdgeInsets.only(right: 6.w),
-                          child: FilterChip(
-                            label: Text(
-                              e.$2,
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                fontWeight: isSel ? FontWeight.w700 : FontWeight.w600,
-                                color: isSel ? Colors.white : AppColors.primary,
-                              ),
-                            ),
-                            selected: isSel,
-                            showCheckmark: isSel,
-                            checkmarkColor: Colors.white,
-                            backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-                            selectedColor: AppColors.primary,
-                            side: BorderSide(
-                              color: isSel ? AppColors.primary : AppColors.primary.withValues(alpha: 0.25),
-                              width: isSel ? 1.5 : 1.0,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20.r),
-                            ),
-                            padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
-                            onSelected: (_) => setState(() => _selectedEntity = e.$1),
-                          ),
-                        );
-                      }),
-                      Container(
-                        height: 24.h,
-                        width: 1,
-                        margin: EdgeInsets.symmetric(horizontal: 6.w),
-                        color: Theme.of(context).dividerColor,
-                      ),
-                      ..._actions.map((a) {
-                        final isSel = _selectedAction == a.$1;
-                        final actionColor = switch (a.$1) {
-                          'create' => AppColors.credit,
-                          'update' => AppColors.primary,
-                          'delete' => AppColors.debit,
-                          _ => AppColors.primary,
-                        };
-
-                        return Padding(
-                          padding: EdgeInsets.only(right: 6.w),
-                          child: FilterChip(
-                            label: Text(
-                              a.$2,
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                fontWeight: isSel ? FontWeight.w700 : FontWeight.w600,
-                                color: isSel ? Colors.white : actionColor,
-                              ),
-                            ),
-                            selected: isSel,
-                            showCheckmark: isSel,
-                            checkmarkColor: Colors.white,
-                            backgroundColor: actionColor.withValues(alpha: 0.08),
-                            selectedColor: actionColor,
-                            side: BorderSide(
-                              color: isSel ? actionColor : actionColor.withValues(alpha: 0.25),
-                              width: isSel ? 1.5 : 1.0,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20.r),
-                            ),
-                            padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
-                            onSelected: (_) => setState(() => _selectedAction = a.$1),
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-
-          Expanded(
-            child: logsAsync.when(
-              loading: () => const AppLoader(message: 'Loading audit history...'),
-              error: (e, _) => AppErrorView(
-                message: e.toString(),
-                onRetry: () => ref.invalidate(auditLogsProvider),
+                onChanged: (v) =>
+                    setState(() => _searchQuery = v.trim().toLowerCase()),
               ),
-              data: (logs) {
-                final filtered = logs.where((item) {
-                  if (_selectedEntity != 'all' && item.entityType != _selectedEntity) {
-                    return false;
-                  }
-                  if (_selectedAction != 'all' && item.action.toLowerCase() != _selectedAction) {
-                    return false;
-                  }
-                  if (_searchQuery.isNotEmpty) {
-                    final fullText = '${item.entityType} ${item.entityId} ${item.changedFieldsJson ?? ''}'.toLowerCase();
-                    if (!fullText.contains(_searchQuery)) return false;
-                  }
-                  return true;
-                }).toList();
-
-                if (filtered.isEmpty) {
-                  return const Center(
-                    child: AppEmptyState(
-                      title: 'No audit records found',
-                      subtitle: 'Mutations and financial actions will appear here with timestamps.',
-                      icon: Icons.history_rounded,
-                    ),
-                  );
-                }
-
-                return ListView.separated(
-                  padding: EdgeInsets.all(AppSpacing.md.w),
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final item = filtered[index];
-                    return ListTile(
-                      onTap: () => _showDetailDialog(item),
-                      leading: _buildActionBadge(item.action),
-                      title: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              item.entityType,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          Text(
-                            dateFmt.format(item.performedAt),
+              SizedBox(height: AppSpacing.sm.h),
+              SingleChildScrollView(
+                controller: _filterScrollController,
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    ..._entities.map((e) {
+                      final isSel = _selectedEntity == e.$1;
+                      return Padding(
+                        padding: EdgeInsets.only(right: 6.w),
+                        child: FilterChip(
+                          label: Text(
+                            e.$2,
                             style: TextStyle(
                               fontSize: 12.sp,
-                              color: AppColors.textSecondary,
+                              fontWeight:
+                                  isSel ? FontWeight.w700 : FontWeight.w600,
+                              color: isSel ? Colors.white : AppColors.primary,
                             ),
                           ),
-                        ],
-                      ),
-                      subtitle: Text(
-                        'ID: ${item.entityId} ${item.changedFieldsJson != null ? '• ${item.changedFieldsJson}' : ''}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: const Icon(Icons.chevron_right_rounded, size: 18),
-                    );
-                  },
-                );
-              },
-            ),
+                          selected: isSel,
+                          showCheckmark: isSel,
+                          checkmarkColor: Colors.white,
+                          backgroundColor:
+                              AppColors.primary.withValues(alpha: 0.08),
+                          selectedColor: AppColors.primary,
+                          side: BorderSide(
+                            color: isSel
+                                ? AppColors.primary
+                                : AppColors.primary.withValues(alpha: 0.25),
+                            width: isSel ? 1.5 : 1.0,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20.r),
+                          ),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 4.w, vertical: 2.h),
+                          onSelected: (_) =>
+                              setState(() => _selectedEntity = e.$1),
+                        ),
+                      );
+                    }),
+                    Container(
+                      height: 24.h,
+                      width: 1,
+                      margin: EdgeInsets.symmetric(horizontal: 6.w),
+                      color: Theme.of(context).dividerColor,
+                    ),
+                    ..._actions.map((a) {
+                      final isSel = _selectedAction == a.$1;
+                      final actionColor = switch (a.$1) {
+                        'create' => AppColors.credit,
+                        'update' => AppColors.primary,
+                        'delete' => AppColors.debit,
+                        _ => AppColors.primary,
+                      };
+                      return Padding(
+                        padding: EdgeInsets.only(right: 6.w),
+                        child: FilterChip(
+                          label: Text(
+                            a.$2,
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              fontWeight:
+                                  isSel ? FontWeight.w700 : FontWeight.w600,
+                              color: isSel ? Colors.white : actionColor,
+                            ),
+                          ),
+                          selected: isSel,
+                          showCheckmark: isSel,
+                          checkmarkColor: Colors.white,
+                          backgroundColor: actionColor.withValues(alpha: 0.08),
+                          selectedColor: actionColor,
+                          side: BorderSide(
+                            color: isSel
+                                ? actionColor
+                                : actionColor.withValues(alpha: 0.25),
+                            width: isSel ? 1.5 : 1.0,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20.r),
+                          ),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 4.w, vertical: 2.h),
+                          onSelected: (_) =>
+                              setState(() => _selectedAction = a.$1),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      );
+        ),
+        const Divider(height: 1),
+
+        Expanded(
+          child: logsAsync.when(
+            loading: () => const AppLoader(message: 'Loading audit history...'),
+            error: (e, _) => AppErrorView(
+              message: e.toString(),
+              onRetry: () => ref.invalidate(auditLogsProvider),
+            ),
+            data: (logs) {
+              final filtered = logs.where((item) {
+                if (!_matchesEntityFilter(item.entityType)) {
+                  return false;
+                }
+                if (_selectedAction != 'all' &&
+                    item.action.toLowerCase() != _selectedAction) {
+                  return false;
+                }
+                if (_searchQuery.isNotEmpty) {
+                  final fullText =
+                      '${item.entityType} ${item.entityId} ${item.changedFieldsJson ?? ''}'
+                          .toLowerCase();
+                  if (!fullText.contains(_searchQuery)) return false;
+                }
+                return true;
+              }).toList();
+
+              if (filtered.isEmpty) {
+                return const Center(
+                  child: AppEmptyState(
+                    title: 'No audit records found',
+                    subtitle:
+                        'Mutations and financial actions will appear here with timestamps.',
+                    icon: Icons.history_rounded,
+                  ),
+                );
+              }
+
+              return ListView.separated(
+                padding: EdgeInsets.all(AppSpacing.md.w),
+                itemCount: filtered.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final item = filtered[index];
+                  return ListTile(
+                    onTap: () => _showDetailDialog(item),
+                    leading: _buildActionBadge(item.action),
+                    title: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.entityType,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        Text(
+                          dateFmt.format(item.performedAt),
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    subtitle: Text(
+                      'ID: ${item.entityId} ${item.changedFieldsJson != null ? '• ${item.changedFieldsJson}' : ''}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
 
     return Scaffold(
       appBar: CustomAppBar(
@@ -380,5 +430,16 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
             )
           : content,
     );
+  }
+
+  bool _matchesEntityFilter(String entityType) {
+    if (_selectedEntity == 'all') return true;
+    if (entityType == _selectedEntity) return true;
+
+    return switch (_selectedEntity) {
+      'contacts' => entityType == 'fl_contacts',
+      'fl_contacts' => entityType == 'contacts',
+      _ => false,
+    };
   }
 }

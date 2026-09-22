@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../routes/route_names.dart';
+import '../../../../shared/widgets/app_bar_widgets.dart';
 import '../providers/fl_contact_providers.dart';
 import '../widgets/fl_contact_card.dart';
 import 'fl_contact_form_screen.dart';
@@ -32,18 +33,10 @@ class _FLContactsScreenState extends ConsumerState<FLContactsScreen> {
   @override
   Widget build(BuildContext context) {
     final contactsAsync = ref.watch(flFilteredContactListProvider);
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Contacts',
-          style: AppTextStyles.h2.copyWith(
-            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-          ),
-        ),
-      ),
+      appBar: const CustomAppBar(title: 'Contacts'),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
@@ -52,11 +45,7 @@ class _FLContactsScreenState extends ConsumerState<FLContactsScreen> {
           style: AppTextStyles.button.copyWith(color: Colors.white),
         ),
         onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => const FLContactFormScreen(),
-            ),
-          );
+          showFLContactFormBottomSheet(context);
         },
       ),
       body: SafeArea(
@@ -81,7 +70,9 @@ class _FLContactsScreenState extends ConsumerState<FLContactsScreen> {
                           icon: const Icon(Icons.clear, size: 18),
                           onPressed: () {
                             _searchController.clear();
-                            ref.read(flContactSearchQueryProvider.notifier).state = '';
+                            ref
+                                .read(flContactSearchQueryProvider.notifier)
+                                .state = '';
                           },
                         )
                       : null,
@@ -96,13 +87,15 @@ class _FLContactsScreenState extends ConsumerState<FLContactsScreen> {
                   ref.invalidate(flContactListProvider);
                 },
                 child: contactsAsync.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
                   error: (error, _) => Center(
                     child: Padding(
                       padding: EdgeInsets.all(AppSpacing.lg.r),
                       child: Text(
                         'Failed to load contacts: $error',
-                        style: AppTextStyles.body.copyWith(color: AppColors.error),
+                        style:
+                            AppTextStyles.body.copyWith(color: AppColors.error),
                       ),
                     ),
                   ),
@@ -117,13 +110,17 @@ class _FLContactsScreenState extends ConsumerState<FLContactsScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                hasQuery ? Icons.search_off : Icons.group_outlined,
+                                hasQuery
+                                    ? Icons.search_off
+                                    : Icons.group_outlined,
                                 size: 64.r,
                                 color: AppColors.textDisabled,
                               ),
                               SizedBox(height: AppSpacing.md.h),
                               Text(
-                                hasQuery ? 'No matching contacts found' : 'No contacts yet',
+                                hasQuery
+                                    ? 'No matching contacts found'
+                                    : 'No contacts yet',
                                 style: AppTextStyles.h3.copyWith(
                                   color: isDark
                                       ? AppColors.darkTextPrimary
@@ -151,11 +148,7 @@ class _FLContactsScreenState extends ConsumerState<FLContactsScreen> {
                                     backgroundColor: AppColors.primary,
                                   ),
                                   onPressed: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) => const FLContactFormScreen(),
-                                      ),
-                                    );
+                                    showFLContactFormBottomSheet(context);
                                   },
                                 ),
                               ],
@@ -167,31 +160,36 @@ class _FLContactsScreenState extends ConsumerState<FLContactsScreen> {
 
                     return ListView.builder(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: EdgeInsets.only(
-                        top: AppSpacing.xs.h,
-                        bottom: 80.h, // FAB clearance
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md.w,
+                        vertical: AppSpacing.sm.h,
                       ),
                       itemCount: contacts.length,
                       itemBuilder: (context, index) {
                         final contact = contacts[index];
-                        final summaryAsync = ref.watch(flContactSummaryProvider(contact.id));
+                        final summaryAsync =
+                            ref.watch(flContactSummaryProvider(contact.id));
 
                         return summaryAsync.when(
                           loading: () => SizedBox(
                             height: 100.h,
-                            child: const Center(child: CircularProgressIndicator()),
+                            child: const Center(
+                                child: CircularProgressIndicator()),
                           ),
                           error: (_, __) => const SizedBox.shrink(),
                           data: (summary) {
                             if (summary == null) return const SizedBox.shrink();
-                            return FLContactCard(
-                              summary: summary,
-                              onTap: () {
-                                context.pushNamed(
-                                  RouteNames.flContactDetail,
-                                  pathParameters: {'id': contact.id},
-                                );
-                              },
+                            return Padding(
+                              padding: EdgeInsets.only(bottom: AppSpacing.sm.h),
+                              child: FLContactCard(
+                                summary: summary,
+                                onTap: () {
+                                  context.pushNamed(
+                                    RouteNames.flContactDetail,
+                                    pathParameters: {'id': contact.id},
+                                  );
+                                },
+                              ),
                             );
                           },
                         );

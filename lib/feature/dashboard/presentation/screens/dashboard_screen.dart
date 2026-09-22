@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
-
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -66,7 +65,8 @@ class DashboardScreen extends ConsumerWidget {
                   summaryAsync.when(
                     loading: () => const SizedBox.shrink(),
                     error: (_, __) => const SizedBox.shrink(),
-                    data: (summary) => _buildRecentActivity(context, summary, ref),
+                    data: (summary) =>
+                        _buildRecentActivity(context, summary, ref),
                   ),
                   SizedBox(height: AppSpacing.xxl.h),
                 ]),
@@ -153,7 +153,9 @@ class DashboardScreen extends ConsumerWidget {
                 Text(
                   'TOTAL AVAILABLE FUND RESPONSIBILITY',
                   style: AppTextStyles.label.copyWith(
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.textSecondary,
                     letterSpacing: 0.8,
                     fontWeight: FontWeight.w600,
                   ),
@@ -177,7 +179,9 @@ class DashboardScreen extends ConsumerWidget {
             Text(
               'Total Available = Total Received - Total Returned',
               style: AppTextStyles.caption.copyWith(
-                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                color: isDark
+                    ? AppColors.darkTextSecondary
+                    : AppColors.textSecondary,
               ),
             ),
           ],
@@ -245,7 +249,7 @@ class DashboardScreen extends ConsumerWidget {
                   foregroundColor: AppColors.onPrimary,
                   padding: EdgeInsets.symmetric(vertical: 18.h),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.r),
+                    borderRadius: BorderRadius.circular(28.r),
                   ),
                 ),
                 onPressed: () => FLReceiveForm.show(
@@ -264,7 +268,7 @@ class DashboardScreen extends ConsumerWidget {
                   foregroundColor: AppColors.onPrimary,
                   padding: EdgeInsets.symmetric(vertical: 18.h),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.r),
+                    borderRadius: BorderRadius.circular(28.r),
                   ),
                 ),
                 onPressed: () => FLUtilizeForm.show(
@@ -283,13 +287,29 @@ class DashboardScreen extends ConsumerWidget {
                   foregroundColor: AppColors.onPrimary,
                   padding: EdgeInsets.symmetric(vertical: 18.h),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.r),
+                    borderRadius: BorderRadius.circular(28.r),
                   ),
                 ),
                 onPressed: () => FLReturnForm.show(
                   context,
                   onSuccess: () => ref.invalidate(flDashboardSummaryProvider),
                 ),
+              ),
+            ),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: FilledButton.icon(
+                icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+                label: const Text('Add Contact'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.onPrimary,
+                  padding: EdgeInsets.symmetric(vertical: 18.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28.r),
+                  ),
+                ),
+                onPressed: () => showFLContactFormBottomSheet(context),
               ),
             ),
           ],
@@ -319,7 +339,8 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRecentActivity(BuildContext context, FLDashboardSummary summary, WidgetRef ref) {
+  Widget _buildRecentActivity(
+      BuildContext context, FLDashboardSummary summary, WidgetRef ref) {
     final recent = summary.recentTransactions;
     if (recent.isEmpty) {
       return Card(
@@ -350,11 +371,7 @@ class DashboardScreen extends ConsumerWidget {
                   icon: const Icon(Icons.person_add_alt),
                   label: const Text('Add Contact to Get Started'),
                   onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const FLContactFormScreen(),
-                      ),
-                    );
+                    showFLContactFormBottomSheet(context);
                   },
                 ),
               ],

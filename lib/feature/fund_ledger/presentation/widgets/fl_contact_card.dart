@@ -25,111 +25,109 @@ class FLContactCard extends StatelessWidget {
     final border = isDark ? AppColors.darkOutline : AppColors.outline;
     final isAvailable = summary.availableAmount >= 0;
 
-    return Material(
-      color: bg,
-      borderRadius: BorderRadius.circular(AppSpacing.radiusMd.r),
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd.r),
+        border: Border.all(color: border, width: 1),
+      ),
       child: InkWell(
         key: Key('fl_contact_card_${summary.contact.id}'),
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd.r),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd.r),
-            border: Border.all(color: border, width: 1),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd.r),
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Left accent bar
-                  Container(
-                    width: 4.w,
-                    color: isAvailable ? AppColors.credit : AppColors.debit,
-                  ),
-                  // Card content
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md.w,
-                        vertical: AppSpacing.sm.h + 2.h,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Contact identity row
-                          Row(
-                            children: [
-                              _Avatar(name: summary.contact.name),
-                              SizedBox(width: AppSpacing.sm.w),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      summary.contact.name,
-                                      style: AppTextStyles.bodyMedium.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        color: isDark
-                                            ? AppColors.darkTextPrimary
-                                            : AppColors.textPrimary,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd.r),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Left accent bar
+                Container(
+                  width: 4.w,
+                  color: isAvailable ? AppColors.credit : AppColors.debit,
+                ),
+                // Card content
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md.w,
+                      vertical: AppSpacing.sm.h + 2.h,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Contact identity row
+                        Row(
+                          children: [
+                            _Avatar(name: summary.contact.name),
+                            SizedBox(width: AppSpacing.sm.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    summary.contact.name,
+                                    style: AppTextStyles.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark
+                                          ? AppColors.darkTextPrimary
+                                          : AppColors.textPrimary,
                                     ),
-                                    Text(
-                                      summary.contact.mobileNumber,
-                                      style: AppTextStyles.caption.copyWith(
-                                        color: isDark
-                                            ? AppColors.darkTextSecondary
-                                            : AppColors.textSecondary,
-                                      ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    summary.contact.mobileNumber,
+                                    style: AppTextStyles.caption.copyWith(
+                                      color: isDark
+                                          ? AppColors.darkTextSecondary
+                                          : AppColors.textSecondary,
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                              SizedBox(width: AppSpacing.sm.w),
-                              // Available badge
-                              _AvailableBadge(amount: summary.availableAmount),
-                            ],
-                          ),
-                          SizedBox(height: AppSpacing.sm.h),
-                          // Divider
-                          Divider(
-                            height: 1,
-                            color: border,
-                          ),
-                          SizedBox(height: AppSpacing.sm.h),
-                          // Metrics row
-                          Row(
-                            children: [
-                              _MiniMetric(
-                                label: 'Received',
-                                amount: summary.totalReceived,
-                                color: AppColors.credit,
-                                icon: Icons.arrow_downward_rounded,
-                              ),
-                              _MiniMetric(
-                                label: 'Utilized',
-                                amount: summary.totalUtilized,
-                                color: AppColors.info,
-                                icon: Icons.shopping_bag_outlined,
-                              ),
-                              _MiniMetric(
-                                label: 'Returned',
-                                amount: summary.totalReturned,
-                                color: AppColors.debit,
-                                icon: Icons.arrow_upward_rounded,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                            ),
+                            SizedBox(width: AppSpacing.sm.w),
+                            // Available badge
+                            _AvailableBadge(amount: summary.availableAmount),
+                          ],
+                        ),
+                        SizedBox(height: AppSpacing.sm.h),
+                        // Divider
+                        Divider(
+                          height: 1,
+                          color: border,
+                        ),
+                        SizedBox(height: AppSpacing.sm.h),
+                        // Metrics row
+                        Row(
+                          children: [
+                            _MiniMetric(
+                              label: 'Received',
+                              amount: summary.totalReceived,
+                              color: AppColors.credit,
+                              icon: Icons.arrow_downward_rounded,
+                            ),
+                            _MiniMetric(
+                              label: 'Utilized',
+                              amount: summary.totalUtilized,
+                              color: AppColors.info,
+                              icon: Icons.shopping_bag_outlined,
+                            ),
+                            _MiniMetric(
+                              label: 'Returned',
+                              amount: summary.totalReturned,
+                              color: AppColors.debit,
+                              icon: Icons.arrow_upward_rounded,
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

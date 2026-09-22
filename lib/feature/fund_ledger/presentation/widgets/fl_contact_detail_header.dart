@@ -31,7 +31,8 @@ class FLContactDetailHeader extends ConsumerWidget {
         height: 200.h,
         margin: EdgeInsets.all(AppSpacing.md.r),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.darkCardBackground : AppColors.cardBackground,
+          color:
+              isDark ? AppColors.darkCardBackground : AppColors.cardBackground,
           borderRadius: BorderRadius.circular(AppSpacing.radiusLg.r),
         ),
         child: const Center(child: CircularProgressIndicator()),
@@ -39,7 +40,8 @@ class FLContactDetailHeader extends ConsumerWidget {
       error: (e, _) => Container(
         margin: EdgeInsets.all(AppSpacing.md.r),
         padding: EdgeInsets.all(AppSpacing.md.r),
-        child: Text('Error loading summary: $e', style: AppTextStyles.body.copyWith(color: AppColors.error)),
+        child: Text('Error loading summary: $e',
+            style: AppTextStyles.body.copyWith(color: AppColors.error)),
       ),
       data: (summary) {
         if (summary == null) return const SizedBox.shrink();
@@ -57,7 +59,8 @@ class FLContactDetailHeader extends ConsumerWidget {
               width: 1,
             ),
           ),
-          color: isDark ? AppColors.darkCardBackground : AppColors.cardBackground,
+          color:
+              isDark ? AppColors.darkCardBackground : AppColors.cardBackground,
           child: Padding(
             padding: EdgeInsets.all(AppSpacing.lg.r),
             child: Column(
@@ -67,7 +70,9 @@ class FLContactDetailHeader extends ConsumerWidget {
                 Text(
                   'AVAILABLE FUND RESPONSIBILITY',
                   style: AppTextStyles.label.copyWith(
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.textSecondary,
                     letterSpacing: 1.0,
                     fontWeight: FontWeight.w600,
                   ),
@@ -87,7 +92,9 @@ class FLContactDetailHeader extends ConsumerWidget {
                 Text(
                   'Available = Received - Returned',
                   style: AppTextStyles.caption.copyWith(
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.textSecondary,
                   ),
                 ),
                 SizedBox(height: AppSpacing.lg.h),
@@ -125,16 +132,19 @@ class FLContactDetailHeader extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: FilledButton.icon(
-                        icon: const Icon(Icons.arrow_downward_rounded, size: 16),
+                        icon:
+                            const Icon(Icons.arrow_downward_rounded, size: 16),
                         label: const Text('Receive'),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.credit,
-                          padding: EdgeInsets.symmetric(vertical: 10.h),
+                          minimumSize: const Size(0, 52),
+                          padding: EdgeInsets.symmetric(horizontal: 8.w),
                         ),
                         onPressed: () => FLReceiveForm.show(
                           context,
                           contactId: contactId,
-                          onSuccess: () => ref.invalidate(flContactSummaryProvider(contactId)),
+                          onSuccess: () => ref
+                              .invalidate(flContactSummaryProvider(contactId)),
                         ),
                       ),
                     ),
@@ -142,29 +152,18 @@ class FLContactDetailHeader extends ConsumerWidget {
                     Expanded(
                       child: FilledButton.icon(
                         icon: const Icon(Icons.shopping_bag_outlined, size: 16),
-                        label: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text('Utilize', style: TextStyle(fontWeight: FontWeight.w600)),
-                            Text(
-                              CurrencyFormatter.formatIndian(summary.totalUtilized),
-                              style: TextStyle(
-                                fontSize: 11.sp,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.onPrimary.withAlpha(210),
-                              ),
-                            ),
-                          ],
-                        ),
+                        label: const Text('Utilize'),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.info,
                           foregroundColor: AppColors.onPrimary,
-                          padding: EdgeInsets.symmetric(vertical: 8.h),
+                          minimumSize: const Size(0, 52),
+                          padding: EdgeInsets.symmetric(horizontal: 8.w),
                         ),
                         onPressed: () => FLUtilizeForm.show(
                           context,
                           contactId: contactId,
-                          onSuccess: () => ref.invalidate(flContactSummaryProvider(contactId)),
+                          onSuccess: () => ref
+                              .invalidate(flContactSummaryProvider(contactId)),
                         ),
                       ),
                     ),
@@ -175,12 +174,14 @@ class FLContactDetailHeader extends ConsumerWidget {
                         label: const Text('Return'),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.debit,
-                          padding: EdgeInsets.symmetric(vertical: 10.h),
+                          minimumSize: const Size(0, 52),
+                          padding: EdgeInsets.symmetric(horizontal: 8.w),
                         ),
                         onPressed: () => FLReturnForm.show(
                           context,
                           contactId: contactId,
-                          onSuccess: () => ref.invalidate(flContactSummaryProvider(contactId)),
+                          onSuccess: () => ref
+                              .invalidate(flContactSummaryProvider(contactId)),
                         ),
                       ),
                     ),
@@ -205,7 +206,8 @@ class FLContactDetailHeader extends ConsumerWidget {
         Text(
           label,
           style: AppTextStyles.captionBold.copyWith(
-            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+            color:
+                isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
           ),
         ),
         SizedBox(height: 2.h),

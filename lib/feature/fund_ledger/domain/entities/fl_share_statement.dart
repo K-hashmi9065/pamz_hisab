@@ -33,6 +33,23 @@ class FLShareStatement {
   bool get hasReceivedHistory => receivedEntries.isNotEmpty;
   bool get hasReturnedHistory => returnedEntries.isNotEmpty;
   bool get hasAnyHistory => hasReceivedHistory || hasReturnedHistory;
+
+  double get totalReceived =>
+      receivedEntries.fold(0, (total, entry) => total + entry.amount);
+
+  double get totalReturned =>
+      returnedEntries.fold(0, (total, entry) => total + entry.amount);
+
+  double get availableBalance => totalReceived - totalReturned;
+
+  FLShareEntry? get latestTodayTransaction {
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final entries = [...receivedEntries, ...returnedEntries]
+        .where((entry) => entry.date.startsWith(today))
+        .toList()
+      ..sort((a, b) => (b.createdAt ?? '').compareTo(a.createdAt ?? ''));
+    return entries.isEmpty ? null : entries.first;
+  }
 }
 
 /// A single line item in the shared PDF.
@@ -43,12 +60,16 @@ class FLShareEntry {
   const FLShareEntry({
     required this.date,
     required this.amount,
+    this.type = 'Transaction',
+    this.createdAt,
     this.paymentMode,
     this.paymentReference,
   });
 
   final String date;
   final double amount;
+  final String type;
+  final String? createdAt;
   final String? paymentMode;
 
   /// UTR / Cheque Number / Draft Number as applicable.

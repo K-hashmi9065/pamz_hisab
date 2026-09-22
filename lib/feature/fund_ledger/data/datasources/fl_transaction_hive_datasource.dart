@@ -2,6 +2,7 @@ import 'package:hive/hive.dart';
 
 import '../../../../core/db/hive/hive_registrar.dart';
 import '../../../../core/utils/app_date_utils.dart';
+import '../../../../core/db/audit/audit_logger.dart';
 import '../../domain/entities/fl_transaction.dart';
 import '../../domain/repositories/fl_transaction_repository.dart';
 import '../models/fl_transaction_model.dart';
@@ -24,9 +25,7 @@ class FLTransactionHiveDataSource implements FLTransactionDataSource {
 
   @override
   Future<List<FLTransactionModel>> getByContact(String contactId) async {
-    final result = _active()
-        .where((t) => t.contactId == contactId)
-        .toList()
+    final result = _active().where((t) => t.contactId == contactId).toList()
       ..sort((a, b) {
         final dateCmp = b.txnDate.compareTo(a.txnDate);
         if (dateCmp != 0) return dateCmp;
@@ -44,10 +43,18 @@ class FLTransactionHiveDataSource implements FLTransactionDataSource {
   }) async {
     var result = _active();
 
-    if (type != null) result = result.where((t) => t.type == type.dbValue).toList();
-    if (contactId != null) result = result.where((t) => t.contactId == contactId).toList();
-    if (fromDate != null) result = result.where((t) => t.txnDate.compareTo(fromDate) >= 0).toList();
-    if (toDate != null) result = result.where((t) => t.txnDate.compareTo(toDate) <= 0).toList();
+    if (type != null) {
+      result = result.where((t) => t.type == type.dbValue).toList();
+    }
+    if (contactId != null) {
+      result = result.where((t) => t.contactId == contactId).toList();
+    }
+    if (fromDate != null) {
+      result = result.where((t) => t.txnDate.compareTo(fromDate) >= 0).toList();
+    }
+    if (toDate != null) {
+      result = result.where((t) => t.txnDate.compareTo(toDate) <= 0).toList();
+    }
 
     result.sort((a, b) {
       final dateCmp = b.txnDate.compareTo(a.txnDate);
@@ -61,6 +68,27 @@ class FLTransactionHiveDataSource implements FLTransactionDataSource {
   @override
   Future<void> insert(FLTransactionModel model) async {
     await _box.put(model.id, model.toMap());
+    await AuditLogger.record(
+      entityType: 'fl_transactions',
+      entityId: model.id,
+      action: 'create',
+      metadata: {
+        'type': model.type,
+        'amount': model.amount,
+        'contact_id': model.contactId,
+      },
+    );
+  }
+
+  @override
+  Future<void> update(FLTransactionModel model) async {
+    await _box.put(model.id, model.toMap());
+    await AuditLogger.record(
+      entityType: 'fl_transactions',
+      entityId: model.id,
+      action: 'update',
+      metadata: {'type': model.type, 'amount': model.amount},
+    );
   }
 
   @override
@@ -71,6 +99,11 @@ class FLTransactionHiveDataSource implements FLTransactionDataSource {
     map['is_deleted'] = 1;
     map['updated_at'] = AppDateUtils.toIso(DateTime.now());
     await _box.put(id, map);
+    await AuditLogger.record(
+      entityType: 'fl_transactions',
+      entityId: id,
+      action: 'delete',
+    );
   }
 
   @override

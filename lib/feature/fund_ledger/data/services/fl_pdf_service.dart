@@ -145,7 +145,8 @@ class FLPdfService {
               ),
               pw.Text(
                 statement.mobileNumber,
-                style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey800),
+                style:
+                    const pw.TextStyle(fontSize: 10, color: PdfColors.grey800),
               ),
               if (statement.aadhaarNumber != null) ...[
                 pw.SizedBox(width: 24),
@@ -159,13 +160,50 @@ class FLPdfService {
                 ),
                 pw.Text(
                   statement.aadhaarNumber!,
-                  style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey800),
+                  style: const pw.TextStyle(
+                      fontSize: 10, color: PdfColors.grey800),
                 ),
               ],
             ],
           ),
+          pw.SizedBox(height: 12),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              _summaryAmount('Total Received', statement.totalReceived),
+              _summaryAmount('Total Returned', statement.totalReturned),
+              _summaryAmount('Available Balance', statement.availableBalance),
+            ],
+          ),
+          if (statement.latestTodayTransaction != null) ...[
+            pw.SizedBox(height: 8),
+            pw.Text(
+              'Last Transaction Today: ${statement.latestTodayTransaction!.type} - ${_currencyFmt.format(statement.latestTodayTransaction!.amount)} on ${statement.latestTodayTransaction!.date}',
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  pw.Widget _summaryAmount(String label, double amount) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          label,
+          style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+        ),
+        pw.Text(
+          _currencyFmt.format(amount),
+          style: pw.TextStyle(
+            fontSize: 12,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.teal900,
+          ),
+        ),
+      ],
     );
   }
 
@@ -185,19 +223,27 @@ class FLPdfService {
       border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
       columnWidths: const {
         0: pw.FlexColumnWidth(1.5), // Date
-        1: pw.FlexColumnWidth(2),   // Amount
+        1: pw.FlexColumnWidth(2), // Amount
         2: pw.FlexColumnWidth(1.5), // Payment Mode
-        3: pw.FlexColumnWidth(2),   // Reference
+        3: pw.FlexColumnWidth(2), // Reference
       },
       children: [
         // Header row
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: PdfColors.teal700),
           children: [
-            _cell('Date', style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
-            _cell('Amount', style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
-            _cell('Payment Mode', style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
-            _cell('Reference', style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
+            _cell('Date',
+                style: pw.TextStyle(
+                    color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
+            _cell('Amount',
+                style: pw.TextStyle(
+                    color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
+            _cell('Payment Mode',
+                style: pw.TextStyle(
+                    color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
+            _cell('Reference',
+                style: pw.TextStyle(
+                    color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
           ],
         ),
         // Data rows

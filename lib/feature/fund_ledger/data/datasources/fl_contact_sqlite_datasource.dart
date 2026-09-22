@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../../../core/db/sqlite/database_helper.dart';
 import '../../../../core/utils/app_date_utils.dart';
+import '../../../../core/db/audit/audit_logger.dart';
 import '../models/fl_contact_model.dart';
 import 'fl_contact_datasource.dart';
 
@@ -49,6 +50,12 @@ class FLContactSqliteDataSource implements FLContactDataSource {
       model.toMap(),
       conflictAlgorithm: ConflictAlgorithm.fail,
     );
+    await AuditLogger.record(
+      entityType: 'fl_contacts',
+      entityId: model.id,
+      action: 'create',
+      metadata: {'name': model.name, 'mobile_number': model.mobileNumber},
+    );
   }
 
   @override
@@ -58,6 +65,12 @@ class FLContactSqliteDataSource implements FLContactDataSource {
       model.toMap(),
       where: 'id = ?',
       whereArgs: [model.id],
+    );
+    await AuditLogger.record(
+      entityType: 'fl_contacts',
+      entityId: model.id,
+      action: 'update',
+      metadata: {'name': model.name, 'mobile_number': model.mobileNumber},
     );
   }
 
@@ -71,6 +84,11 @@ class FLContactSqliteDataSource implements FLContactDataSource {
       },
       where: 'id = ?',
       whereArgs: [id],
+    );
+    await AuditLogger.record(
+      entityType: 'fl_contacts',
+      entityId: id,
+      action: 'delete',
     );
   }
 }

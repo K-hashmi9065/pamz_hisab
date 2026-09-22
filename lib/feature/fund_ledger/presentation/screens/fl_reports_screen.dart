@@ -7,6 +7,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../shared/widgets/app_bar_widgets.dart';
+import '../../domain/entities/fl_contact.dart';
 import '../../domain/entities/fl_transaction.dart';
 import '../providers/fl_contact_providers.dart';
 import '../providers/fl_transaction_providers.dart';
@@ -23,6 +25,7 @@ class FLReportsScreen extends ConsumerStatefulWidget {
 
 class _FLReportsScreenState extends ConsumerState<FLReportsScreen> {
   final _searchController = TextEditingController();
+  List<FLTransaction>? _lastReports;
 
   @override
   void dispose() {
@@ -34,19 +37,19 @@ class _FLReportsScreenState extends ConsumerState<FLReportsScreen> {
   Widget build(BuildContext context) {
     final filter = ref.watch(flReportsFilterProvider);
     final reportsAsync = ref.watch(flReportsListProvider);
+    final totalsAsync = ref.watch(flReportsTotalsProvider);
     final contactsAsync = ref.watch(flContactListProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    if (reportsAsync.hasValue) {
+      _lastReports = reportsAsync.value;
+    }
+    final displayedReports = reportsAsync.hasValue || _lastReports == null
+        ? reportsAsync
+        : AsyncValue.data(_lastReports!);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Reports & Analytics',
-          style: AppTextStyles.h2.copyWith(
-            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-          ),
-        ),
-      ),
+      appBar: const CustomAppBar(title: 'Reports & Analytics'),
       body: SafeArea(
         child: Column(
           children: [
@@ -72,18 +75,64 @@ class _FLReportsScreenState extends ConsumerState<FLReportsScreen> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _typeChip(label: 'All Types', type: null, currentType: filter.type, isDark: isDark),
+                        _typeChip(
+                            label: 'All Types',
+                            type: null,
+                            currentType: filter.type,
+                            isDark: isDark),
                         SizedBox(width: 8.w),
-                        _typeChip(label: 'Received', type: FLTransactionType.received, currentType: filter.type, isDark: isDark),
+                        _typeChip(
+                            label: 'Received',
+                            type: FLTransactionType.received,
+                            currentType: filter.type,
+                            isDark: isDark),
                         SizedBox(width: 8.w),
-                        _typeChip(label: 'Utilized', type: FLTransactionType.utilized, currentType: filter.type, isDark: isDark),
+                        _typeChip(
+                            label: 'Utilized',
+                            type: FLTransactionType.utilized,
+                            currentType: filter.type,
+                            isDark: isDark),
                         SizedBox(width: 8.w),
-                        _typeChip(label: 'Returned', type: FLTransactionType.returned, currentType: filter.type, isDark: isDark),
+                        _typeChip(
+                            label: 'Returned',
+                            type: FLTransactionType.returned,
+                            currentType: filter.type,
+                            isDark: isDark),
                       ],
                     ),
                   ),
                   SizedBox(height: 8.h),
-                  // Contact Filter & Date Filter row
+                  // Search transactions.
+                  TextField(
+                    controller: _searchController,
+                    onChanged: (value) {
+                      ref.read(flReportsFilterProvider.notifier).state =
+                          filter.copyWith(searchQuery: value);
+                    },
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search),
+                      hintText: 'Search transactions',
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 10.w,
+                        vertical: 10.h,
+                      ),
+                      suffixIcon: _searchController.text.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () {
+                                _searchController.clear();
+                                ref
+                                    .read(flReportsFilterProvider.notifier)
+                                    .state = filter.copyWith(searchQuery: '');
+                                setState(() {});
+                              },
+                            ),
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  // Contact picker opens with its search bar, All Contacts, then names.
                   Row(
                     children: [
                       // Contact Dropdown
@@ -91,32 +140,10 @@ class _FLReportsScreenState extends ConsumerState<FLReportsScreen> {
                         child: contactsAsync.when(
                           loading: () => const SizedBox.shrink(),
                           error: (_, __) => const SizedBox.shrink(),
-                          data: (contacts) => DropdownButtonFormField<String?>(
-                            initialValue: filter.contactId,
-                            isDense: true,
-                            decoration: InputDecoration(
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 10.w,
-                                vertical: 8.h,
-                              ),
-                              hintText: 'All Contacts',
-                            ),
-                            items: [
-                              const DropdownMenuItem<String?>(
-                                value: null,
-                                child: Text('All Contacts'),
-                              ),
-                              ...contacts.map(
-                                (c) => DropdownMenuItem<String?>(
-                                  value: c.id,
-                                  child: Text(c.name, overflow: TextOverflow.ellipsis),
-                                ),
-                              ),
-                            ],
-                            onChanged: (val) {
-                              ref.read(flReportsFilterProvider.notifier).state =
-                                  filter.copyWith(contactId: val);
-                            },
+                          data: (contacts) => _contactPickerButton(
+                            context,
+                            contacts,
+                            filter.contactId,
                           ),
                         ),
                       ),
@@ -135,19 +162,23 @@ class _FLReportsScreenState extends ConsumerState<FLReportsScreen> {
                             context: context,
                             firstDate: DateTime(2000),
                             lastDate: DateTime(2100),
-                            initialDateRange: filter.from != null && filter.to != null
-                                ? DateTimeRange(start: filter.from!, end: filter.to!)
-                                : null,
+                            initialDateRange:
+                                filter.from != null && filter.to != null
+                                    ? DateTimeRange(
+                                        start: filter.from!, end: filter.to!)
+                                    : null,
                           );
                           if (picked != null) {
-                            ref.read(flReportsFilterProvider.notifier).state = filter.copyWith(
+                            ref.read(flReportsFilterProvider.notifier).state =
+                                filter.copyWith(
                               from: picked.start,
                               to: picked.end,
                             );
                           } else {
-                            ref.read(flReportsFilterProvider.notifier).state = filter.copyWith(
-                              from: null,
-                              to: null,
+                            ref.read(flReportsFilterProvider.notifier).state =
+                                filter.copyWith(
+                              clearFrom: true,
+                              clearTo: true,
                             );
                           }
                         },
@@ -164,21 +195,17 @@ class _FLReportsScreenState extends ConsumerState<FLReportsScreen> {
                 onRefresh: () async {
                   ref.invalidate(flReportsListProvider);
                 },
-                child: reportsAsync.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                child: displayedReports.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
                   error: (err, _) => Center(
                     child: Text('Error loading reports: $err'),
                   ),
                   data: (txns) {
-                    final totalReceived = txns
-                        .where((t) => t.type == FLTransactionType.received)
-                        .fold<double>(0, (sum, t) => sum + t.amount);
-                    final totalUtilized = txns
-                        .where((t) => t.type == FLTransactionType.utilized)
-                        .fold<double>(0, (sum, t) => sum + t.amount);
-                    final totalReturned = txns
-                        .where((t) => t.type == FLTransactionType.returned)
-                        .fold<double>(0, (sum, t) => sum + t.amount);
+                    final totals = totalsAsync.asData?.value;
+                    final totalReceived = totals?.totalReceived ?? 0;
+                    final totalUtilized = totals?.totalUtilized ?? 0;
+                    final totalReturned = totals?.totalReturned ?? 0;
                     final netAvailable = totalReceived - totalReturned;
 
                     return CustomScrollView(
@@ -227,7 +254,9 @@ class _FLReportsScreenState extends ConsumerState<FLReportsScreen> {
                                       child: _metricTile(
                                         title: 'Net Available',
                                         amount: netAvailable,
-                                        color: netAvailable >= 0 ? AppColors.credit : AppColors.debit,
+                                        color: netAvailable >= 0
+                                            ? AppColors.credit
+                                            : AppColors.debit,
                                         isDark: isDark,
                                       ),
                                     ),
@@ -251,7 +280,9 @@ class _FLReportsScreenState extends ConsumerState<FLReportsScreen> {
                                 Text(
                                   'Transactions (${txns.length})',
                                   style: AppTextStyles.h3.copyWith(
-                                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                                    color: isDark
+                                        ? AppColors.darkTextPrimary
+                                        : AppColors.textPrimary,
                                   ),
                                 ),
                               ],
@@ -337,17 +368,118 @@ class _FLReportsScreenState extends ConsumerState<FLReportsScreen> {
       ),
       selected: isSelected,
       selectedColor: AppColors.primary,
-      backgroundColor: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
+      backgroundColor:
+          isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
       side: BorderSide(
-        color: isSelected ? AppColors.primary : (isDark ? AppColors.darkOutline : AppColors.outline),
+        color: isSelected
+            ? AppColors.primary
+            : (isDark ? AppColors.darkOutline : AppColors.outline),
         width: 1,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
       onSelected: (_) {
-        ref.read(flReportsFilterProvider.notifier).state =
-            ref.read(flReportsFilterProvider).copyWith(type: type);
+        ref.read(flReportsFilterProvider.notifier).state = type == null
+            ? ref.read(flReportsFilterProvider).copyWith(clearType: true)
+            : ref.read(flReportsFilterProvider).copyWith(type: type);
       },
     );
+  }
+
+  Widget _contactPickerButton(
+    BuildContext context,
+    List<FLContact> contacts,
+    String? selectedContactId,
+  ) {
+    final selectedContact = contacts.where((contact) {
+      return contact.id == selectedContactId;
+    }).firstOrNull;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(8.r),
+      onTap: () => _showContactPicker(context, contacts),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          prefixIcon: const Icon(Icons.contacts_outlined),
+          suffixIcon: const Icon(Icons.arrow_drop_down),
+          isDense: true,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: 10.w,
+            vertical: 8.h,
+          ),
+        ),
+        child: Text(selectedContact?.name ?? 'All Contacts'),
+      ),
+    );
+  }
+
+  Future<void> _showContactPicker(
+    BuildContext context,
+    List<FLContact> contacts,
+  ) async {
+    final searchController = TextEditingController();
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final query = searchController.text.trim().toLowerCase();
+            final filteredContacts = query.isEmpty
+                ? contacts
+                : contacts.where((contact) {
+                    return contact.name.toLowerCase().contains(query) ||
+                        contact.mobileNumber.contains(query);
+                  }).toList();
+
+            return AlertDialog(
+              titlePadding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 8.h),
+              contentPadding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 12.h),
+              title: TextField(
+                controller: searchController,
+                autofocus: true,
+                onChanged: (_) => setDialogState(() {}),
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  hintText: 'Search contacts',
+                ),
+              ),
+              content: SizedBox(
+                width: 420.w,
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.groups_outlined),
+                      title: const Text('All Contacts'),
+                      onTap: () {
+                        ref.read(flReportsFilterProvider.notifier).state = ref
+                            .read(flReportsFilterProvider)
+                            .copyWith(clearContactId: true);
+                        Navigator.of(dialogContext).pop();
+                      },
+                    ),
+                    ...filteredContacts.map(
+                      (contact) => ListTile(
+                        leading: const Icon(Icons.person_outline),
+                        title: Text(contact.name),
+                        subtitle: Text(contact.mobileNumber),
+                        onTap: () {
+                          ref.read(flReportsFilterProvider.notifier).state = ref
+                              .read(flReportsFilterProvider)
+                              .copyWith(contactId: contact.id);
+                          Navigator.of(dialogContext).pop();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+    searchController.dispose();
   }
 
   Widget _metricTile({
@@ -372,7 +504,9 @@ class _FLReportsScreenState extends ConsumerState<FLReportsScreen> {
           Text(
             title,
             style: AppTextStyles.caption.copyWith(
-              color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+              color: isDark
+                  ? AppColors.darkTextSecondary
+                  : AppColors.textSecondary,
             ),
           ),
           SizedBox(height: 4.h),

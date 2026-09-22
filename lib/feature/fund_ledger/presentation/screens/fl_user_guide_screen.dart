@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../shared/widgets/app_bar_widgets.dart';
 
 /// Interactive and comprehensive User Guide for Fund Responsibility Ledger.
 class FLUserGuideScreen extends StatelessWidget {
@@ -15,14 +16,7 @@ class FLUserGuideScreen extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'User Guide',
-          style: AppTextStyles.h2.copyWith(
-            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-          ),
-        ),
-      ),
+      appBar: const CustomAppBar(title: 'User Guide'),
       body: SafeArea(
         child: ListView(
           padding: EdgeInsets.all(AppSpacing.md.r),
@@ -30,7 +24,9 @@ class FLUserGuideScreen extends StatelessWidget {
             // Hero Intro Card
             Card(
               elevation: 0,
-              color: isDark ? AppColors.darkSurfaceVariant : const Color(0xFFE8F5E9),
+              color: isDark
+                  ? AppColors.darkSurfaceVariant
+                  : const Color(0xFFE8F5E9),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppSpacing.radiusLg.r),
                 side: BorderSide(
@@ -65,7 +61,9 @@ class FLUserGuideScreen extends StatelessWidget {
                     Text(
                       'A reliable, local-first fund management ledger designed for trustees, coordinators, and individuals managing public, family, or organizational funds.',
                       style: AppTextStyles.body.copyWith(
-                        color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary,
                       ),
                     ),
                   ],
@@ -94,8 +92,7 @@ class FLUserGuideScreen extends StatelessWidget {
               icon: Icons.swap_horiz_rounded,
               iconColor: AppColors.info,
               title: '2. The Three Transaction Types',
-              content:
-                  '🟢 Receive Fund:\n'
+              content: '🟢 Receive Fund:\n'
                   'Record when a contact transfers or deposits money into your custody. Increases available funds.\n\n'
                   '🔵 Utilize Fund:\n'
                   'Record when you spend or distribute money on project expenses (e.g. food, medical aid, materials, fees). Includes a purpose title and optional notes.\n\n'
@@ -124,8 +121,7 @@ class FLUserGuideScreen extends StatelessWidget {
               icon: Icons.offline_pin_outlined,
               iconColor: AppColors.primary,
               title: '4. 100% Offline & Local Storage',
-              content:
-                  '• All data is saved on your local device storage.\n'
+              content: '• All data is saved on your local device storage.\n'
                   '• No account or internet connection is required.\n'
                   '• Keep your app updated and perform regular backups via the Settings tab.',
               isDark: isDark,
@@ -174,7 +170,9 @@ class FLUserGuideScreen extends StatelessWidget {
                   child: Text(
                     title,
                     style: AppTextStyles.h3.copyWith(
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                      color: isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textPrimary,
                     ),
                   ),
                 ),
@@ -185,7 +183,9 @@ class FLUserGuideScreen extends StatelessWidget {
               content,
               style: AppTextStyles.body.copyWith(
                 height: 1.5,
-                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                color: isDark
+                    ? AppColors.darkTextSecondary
+                    : AppColors.textSecondary,
               ),
             ),
           ],

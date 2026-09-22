@@ -7,10 +7,10 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import '../../domain/entities/fl_share_statement.dart';
 import '../../domain/entities/fl_transaction.dart';
 import '../providers/fl_contact_providers.dart';
 import '../providers/fl_transaction_providers.dart';
+import '../screens/fl_pdf_preview_screen.dart';
 import 'fl_contact_search_field.dart';
 import 'fl_payment_mode_field.dart';
 
@@ -55,6 +55,7 @@ class _FLReturnFormState extends ConsumerState<FLReturnForm> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _refController = TextEditingController();
+  final _titleController = TextEditingController();
   final _noteController = TextEditingController();
 
   String? _selectedContactId;
@@ -72,6 +73,7 @@ class _FLReturnFormState extends ConsumerState<FLReturnForm> {
   void dispose() {
     _amountController.dispose();
     _refController.dispose();
+    _titleController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -141,7 +143,8 @@ class _FLReturnFormState extends ConsumerState<FLReturnForm> {
                             Container(
                               padding: EdgeInsets.all(8.r),
                               decoration: BoxDecoration(
-                                color: AppColors.debitLight.withAlpha(isDark ? 30 : 255),
+                                color: AppColors.debitLight
+                                    .withAlpha(isDark ? 30 : 255),
                                 borderRadius: BorderRadius.circular(8.r),
                               ),
                               child: Icon(
@@ -154,7 +157,9 @@ class _FLReturnFormState extends ConsumerState<FLReturnForm> {
                             Text(
                               'Return Fund',
                               style: AppTextStyles.h2.copyWith(
-                                color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                                color: isDark
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.textPrimary,
                               ),
                             ),
                           ],
@@ -175,9 +180,11 @@ class _FLReturnFormState extends ConsumerState<FLReturnForm> {
                         data: (contacts) => FLContactSearchField(
                           contacts: contacts,
                           selectedContactId: _selectedContactId,
-                          onChanged: (val) => setState(() => _selectedContactId = val),
-                          validator: (val) =>
-                              val == null || val.isEmpty ? 'Please select a contact' : null,
+                          onChanged: (val) =>
+                              setState(() => _selectedContactId = val),
+                          validator: (val) => val == null || val.isEmpty
+                              ? 'Please select a contact'
+                              : null,
                         ),
                       ),
                       SizedBox(height: AppSpacing.sm.h),
@@ -192,10 +199,15 @@ class _FLReturnFormState extends ConsumerState<FLReturnForm> {
                           vertical: AppSpacing.sm.h,
                         ),
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm.r),
+                          color: isDark
+                              ? AppColors.darkSurfaceVariant
+                              : AppColors.surfaceVariant,
+                          borderRadius:
+                              BorderRadius.circular(AppSpacing.radiusSm.r),
                           border: Border.all(
-                            color: isDark ? AppColors.darkOutline : AppColors.outline,
+                            color: isDark
+                                ? AppColors.darkOutline
+                                : AppColors.outline,
                             width: 0.8,
                           ),
                         ),
@@ -208,13 +220,17 @@ class _FLReturnFormState extends ConsumerState<FLReturnForm> {
                             Text(
                               'Max Available to Return:',
                               style: AppTextStyles.captionBold.copyWith(
-                                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                                color: isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.textSecondary,
                               ),
                             ),
                             Text(
                               CurrencyFormatter.formatIndian(availableAmount),
                               style: AppTextStyles.amountSmall.copyWith(
-                                color: availableAmount > 0 ? AppColors.credit : AppColors.debit,
+                                color: availableAmount > 0
+                                    ? AppColors.credit
+                                    : AppColors.debit,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -227,9 +243,11 @@ class _FLReturnFormState extends ConsumerState<FLReturnForm> {
                     // Amount Field
                     TextFormField(
                       controller: _amountController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       autofocus: widget.initialContactId != null,
-                      style: AppTextStyles.amountLarge.copyWith(color: AppColors.debit),
+                      style: AppTextStyles.amountLarge
+                          .copyWith(color: AppColors.debit),
                       decoration: InputDecoration(
                         labelText: 'Return Amount (₹) *',
                         prefixIcon: const Icon(Icons.currency_rupee),
@@ -237,9 +255,13 @@ class _FLReturnFormState extends ConsumerState<FLReturnForm> {
                         labelStyle: AppTextStyles.label,
                       ),
                       validator: (val) {
-                        if (val == null || val.trim().isEmpty) return 'Please enter amount';
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Please enter amount';
+                        }
                         final num = double.tryParse(val.trim());
-                        if (num == null || num <= 0) return 'Enter a valid amount greater than 0';
+                        if (num == null || num <= 0) {
+                          return 'Enter a valid amount greater than 0';
+                        }
                         if (availableAmount != null && num > availableAmount) {
                           return 'Return amount cannot exceed available fund (${CurrencyFormatter.formatIndian(availableAmount)})';
                         }
@@ -254,7 +276,8 @@ class _FLReturnFormState extends ConsumerState<FLReturnForm> {
                         Expanded(
                           child: OutlinedButton.icon(
                             icon: const Icon(Icons.calendar_today, size: 16),
-                            label: Text(DateFormat('dd MMM yyyy').format(_selectedDate)),
+                            label: Text(DateFormat('dd MMM yyyy')
+                                .format(_selectedDate)),
                             onPressed: () async {
                               final picked = await showDatePicker(
                                 context: context,
@@ -262,7 +285,9 @@ class _FLReturnFormState extends ConsumerState<FLReturnForm> {
                                 firstDate: DateTime(2000),
                                 lastDate: DateTime(2100),
                               );
-                              if (picked != null) setState(() => _selectedDate = picked);
+                              if (picked != null) {
+                                setState(() => _selectedDate = picked);
+                              }
                             },
                           ),
                         ),
@@ -276,7 +301,9 @@ class _FLReturnFormState extends ConsumerState<FLReturnForm> {
                                 context: context,
                                 initialTime: _selectedTime,
                               );
-                              if (picked != null) setState(() => _selectedTime = picked);
+                              if (picked != null) {
+                                setState(() => _selectedTime = picked);
+                              }
                             },
                           ),
                         ),
@@ -314,6 +341,18 @@ class _FLReturnFormState extends ConsumerState<FLReturnForm> {
                       SizedBox(height: AppSpacing.sm.h),
                     ],
 
+                    // Optional title
+                    TextFormField(
+                      controller: _titleController,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: const InputDecoration(
+                        labelText: 'Title (Optional)',
+                        prefixIcon: Icon(Icons.title_outlined),
+                        hintText: 'e.g. Monthly return',
+                      ),
+                    ),
+                    SizedBox(height: AppSpacing.sm.h),
+
                     // Note
                     TextFormField(
                       controller: _noteController,
@@ -347,7 +386,8 @@ class _FLReturnFormState extends ConsumerState<FLReturnForm> {
                           : Icon(Icons.arrow_upward_rounded, size: 20.r),
                       label: Text(
                         isLoading ? 'Saving...' : 'Record Returned Fund',
-                        style: AppTextStyles.button.copyWith(color: Colors.white),
+                        style:
+                            AppTextStyles.button.copyWith(color: Colors.white),
                       ),
                     ),
                   ],
@@ -359,7 +399,6 @@ class _FLReturnFormState extends ConsumerState<FLReturnForm> {
       ),
     );
   }
-
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -379,102 +418,45 @@ class _FLReturnFormState extends ConsumerState<FLReturnForm> {
         '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
     final refText = _paymentMode == 'Cash'
         ? null
-        : (_refController.text.trim().isEmpty ? null : _refController.text.trim());
+        : (_refController.text.trim().isEmpty
+            ? null
+            : _refController.text.trim());
 
-    final success = await ref.read(flTransactionFormNotifierProvider.notifier).add(
-          contactId: _selectedContactId!,
-          type: FLTransactionType.returned,
-          amount: amount,
-          txnDate: dateStr,
-          txnTime: timeStr,
-          paymentMode: _paymentMode,
-          paymentReference: refText,
-          note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
-        );
+    final success =
+        await ref.read(flTransactionFormNotifierProvider.notifier).add(
+              contactId: _selectedContactId!,
+              type: FLTransactionType.returned,
+              amount: amount,
+              txnDate: dateStr,
+              txnTime: timeStr,
+              paymentMode: _paymentMode,
+              paymentReference: refText,
+              title: _titleController.text.trim().isEmpty
+                  ? null
+                  : _titleController.text.trim(),
+              note: _noteController.text.trim().isEmpty
+                  ? null
+                  : _noteController.text.trim(),
+            );
 
     if (!mounted) return;
 
     if (success) {
       final contactId = _selectedContactId!;
       final nav = Navigator.of(context);
-      final scaffoldMessenger = ScaffoldMessenger.of(context);
-      final shareService = ref.read(flShareServiceProvider);
+      final parentContext = nav.context;
       final contactFuture = ref.read(flContactByIdProvider(contactId).future);
-      final txnsFuture = ref.read(flTransactionHistoryProvider(contactId).future);
+      final txnsFuture =
+          ref.read(flTransactionHistoryProvider(contactId).future);
 
       nav.pop();
       widget.onSuccess?.call();
 
-      // Show Transaction Saved dialog on parent navigator context
       if (nav.context.mounted) {
-        showDialog<void>(
-          context: nav.context,
-          builder: (dialogCtx) => AlertDialog(
-            title: Row(
-              children: [
-                const Icon(Icons.check_circle, color: AppColors.credit, size: 24),
-                SizedBox(width: 8.w),
-                const Text('Transaction Saved'),
-              ],
-            ),
-            content: Text(
-              'Fund Returned of ₹${amount.toStringAsFixed(2)} has been successfully recorded in the ledger.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogCtx).pop(),
-                child: const Text('Not Now'),
-              ),
-              FilledButton.icon(
-                icon: const Icon(Icons.share, size: 16),
-                label: const Text('Share Statement PDF'),
-                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-                onPressed: () async {
-                  Navigator.of(dialogCtx).pop();
-                  try {
-                    final contact = await contactFuture;
-                    final txns = await txnsFuture;
-                    if (contact == null) return;
-
-                    final shareStatement = FLShareStatement(
-                      contactName: contact.name,
-                      mobileNumber: contact.mobileNumber,
-                      aadhaarNumber: contact.aadhaarNumber,
-                      receivedEntries: txns
-                          .where((t) => t.type == FLTransactionType.received)
-                          .map((t) => FLShareEntry(
-                                date: t.txnDate,
-                                amount: t.amount,
-                                paymentMode: t.paymentMode,
-                                paymentReference: t.paymentReference,
-                              ))
-                          .toList(),
-                      returnedEntries: txns
-                          .where((t) => t.type == FLTransactionType.returned)
-                          .map((t) => FLShareEntry(
-                                date: t.txnDate,
-                                amount: t.amount,
-                                paymentMode: t.paymentMode,
-                                paymentReference: t.paymentReference,
-                              ))
-                          .toList(),
-                    );
-
-                    await shareService.shareStatement(shareStatement);
-                  } catch (e) {
-                    if (scaffoldMessenger.mounted) {
-                      scaffoldMessenger.showSnackBar(
-                        SnackBar(
-                          content: Text('Error generating statement: $e'),
-                          backgroundColor: AppColors.error,
-                        ),
-                      );
-                    }
-                  }
-                },
-              ),
-            ],
-          ),
+        await showFLPdfPreviewFromFutures(
+          parentContext,
+          contactFuture: contactFuture,
+          txnsFuture: txnsFuture,
         );
       }
     } else {

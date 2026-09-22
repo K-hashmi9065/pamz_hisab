@@ -9,169 +9,141 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../../shared/widgets/app_bar_widgets.dart';
 import '../../../../shared/widgets/app_card.dart';
-import '../../../notifications/presentation/screens/notification_templates_screen.dart';
 import '../providers/app_settings_providers.dart';
 import 'audit_log_screen.dart';
-import 'category_config_screen.dart';
 import 'payment_modes_screen.dart';
 
-/// Settings screen — app config, backup, categories shortcut.
+/// Settings screen for app configuration and Fund Ledger preferences.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(appSettingsProvider);
-    final isWide = MediaQuery.of(context).size.width >= AppConstants.tabletBreakpoint;
+    final isWide =
+        MediaQuery.of(context).size.width >= AppConstants.tabletBreakpoint;
 
     final content = ListView(
       padding: EdgeInsets.all(AppSpacing.lg.w),
       children: [
         const SectionHeader(title: 'App Configuration'),
-          SizedBox(height: AppSpacing.sm.h),
-          AppCard(
-            child: Column(
-              children: [
-                _SettingsTile(
-                  icon: Icons.dark_mode_rounded,
-                  title: 'Theme Mode',
-                  subtitle: _themeModeLabel(ref.watch(themeModeProvider)),
-                  onTap: () => _showThemePicker(context, ref),
-                ),
-                const Divider(height: 1),
-                _SettingsTile(
-                  icon: Icons.currency_rupee_rounded,
-                  title: 'Currency & Numbering',
-                  subtitle: '${settings.currencySymbol} · ${settings.numberingFormat}',
-                  onTap: () => _showCurrencyNumberingPicker(context, ref),
-                ),
-                const Divider(height: 1),
-                _SettingsTile(
-                  icon: Icons.calendar_month_rounded,
-                  title: 'Fiscal Year Start',
-                  subtitle: settings.fiscalYearLabel,
-                  onTap: () => _showFiscalYearPicker(context, ref),
-                ),
-                const Divider(height: 1),
-                _SettingsTile(
-                  icon: Icons.percent_rounded,
-                  title: 'GST Settings',
-                  subtitle: settings.gstEnabled
-                      ? 'Enabled · ${settings.gstRate.toStringAsFixed(0)}% default rate'
-                      : 'Disabled (Click to configure)',
-                  onTap: () => _showGstSettingsDialog(context, ref),
-                ),
-              ],
-            ),
+        SizedBox(height: AppSpacing.sm.h),
+        AppCard(
+          child: Column(
+            children: [
+              _SettingsTile(
+                icon: Icons.dark_mode_rounded,
+                title: 'Theme Mode',
+                subtitle: _themeModeLabel(ref.watch(themeModeProvider)),
+                onTap: () => _showThemePicker(context, ref),
+              ),
+              const Divider(height: 1),
+              _SettingsTile(
+                icon: Icons.currency_rupee_rounded,
+                title: 'Currency & Numbering',
+                subtitle:
+                    '${settings.currencySymbol} · ${settings.numberingFormat}',
+                onTap: () => _showCurrencyNumberingPicker(context, ref),
+              ),
+              const Divider(height: 1),
+              _SettingsTile(
+                icon: Icons.calendar_month_rounded,
+                title: 'Fiscal Year Start',
+                subtitle: settings.fiscalYearLabel,
+                onTap: () => _showFiscalYearPicker(context, ref),
+              ),
+              const Divider(height: 1),
+              _SettingsTile(
+                icon: Icons.percent_rounded,
+                title: 'GST Settings',
+                subtitle: settings.gstEnabled
+                    ? 'Enabled · ${settings.gstRate.toStringAsFixed(0)}% default rate'
+                    : 'Disabled (Click to configure)',
+                onTap: () => _showGstSettingsDialog(context, ref),
+              ),
+            ],
           ),
-
-          SizedBox(height: AppSpacing.xl.h),
-          const SectionHeader(title: 'Manage Data'),
-          SizedBox(height: AppSpacing.sm.h),
-          AppCard(
-            child: Column(
-              children: [
-                _SettingsTile(
-                  icon: Icons.category_rounded,
-                  title: 'Categories',
-                  subtitle: 'Manage income & expense categories',
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const CategoryConfigScreen(),
-                      ),
-                    );
+        ),
+        SizedBox(height: AppSpacing.xl.h),
+        const SectionHeader(title: 'Manage Data'),
+        SizedBox(height: AppSpacing.sm.h),
+        AppCard(
+          child: Column(
+            children: [
+              _SettingsTile(
+                icon: Icons.account_balance_wallet_outlined,
+                title: 'Payment Modes',
+                subtitle: 'Cash, UPI, Bank Transfer, Cheque',
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const PaymentModesScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: AppSpacing.xl.h),
+        const SectionHeader(title: 'Security & Audit'),
+        SizedBox(height: AppSpacing.sm.h),
+        AppCard(
+          child: Column(
+            children: [
+              _SettingsTile(
+                icon: Icons.fingerprint_rounded,
+                title: 'Biometric Lock',
+                subtitle: 'Face ID / Touch ID protection at startup',
+                onTap: () {},
+                trailing: Switch(
+                  value: settings.biometricEnabled,
+                  onChanged: (v) {
+                    ref
+                        .read(appSettingsProvider.notifier)
+                        .setBiometricEnabled(v);
                   },
+                  activeTrackColor: AppColors.primary,
                 ),
-                const Divider(height: 1),
-                _SettingsTile(
-                  icon: Icons.account_balance_wallet_outlined,
-                  title: 'Payment Modes',
-                  subtitle: 'Cash, UPI, Bank Transfer, Cheque',
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const PaymentModesScreen(),
-                      ),
-                    );
-                  },
-                ),
-                const Divider(height: 1),
-                _SettingsTile(
-                  icon: Icons.message_outlined,
-                  title: 'Message Templates',
-                  subtitle: 'Customize WhatsApp/SMS templates',
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const NotificationTemplatesScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
+              ),
+              const Divider(height: 1),
+              _SettingsTile(
+                icon: Icons.history_edu_rounded,
+                title: 'Audit Logs',
+                subtitle: 'View full trail of financial mutations',
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const AuditLogScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
-
-          SizedBox(height: AppSpacing.xl.h),
-          const SectionHeader(title: 'Security & Audit'),
-          SizedBox(height: AppSpacing.sm.h),
-          AppCard(
-            child: Column(
-              children: [
-                _SettingsTile(
-                  icon: Icons.fingerprint_rounded,
-                  title: 'Biometric Lock',
-                  subtitle: 'Face ID / Touch ID protection at startup',
-                  onTap: () {},
-                  trailing: Switch(
-                    value: settings.biometricEnabled,
-                    onChanged: (v) {
-                      ref.read(appSettingsProvider.notifier).setBiometricEnabled(v);
-                    },
-                    activeTrackColor: AppColors.primary,
-                  ),
-                ),
-                const Divider(height: 1),
-                _SettingsTile(
-                  icon: Icons.history_edu_rounded,
-                  title: 'Audit Logs',
-                  subtitle: 'View full trail of financial mutations',
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const AuditLogScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
+        ),
+        SizedBox(height: AppSpacing.xl.h),
+        const SectionHeader(title: 'Language'),
+        SizedBox(height: AppSpacing.sm.h),
+        AppCard(
+          child: _SettingsTile(
+            icon: Icons.language_rounded,
+            title: 'App Language',
+            subtitle: 'English (India)',
+            onTap: () {},
           ),
-
-          SizedBox(height: AppSpacing.xl.h),
-          const SectionHeader(title: 'Language'),
-          SizedBox(height: AppSpacing.sm.h),
-          AppCard(
-            child: _SettingsTile(
-              icon: Icons.language_rounded,
-              title: 'App Language',
-              subtitle: 'English (India)',
-              onTap: () {},
-            ),
+        ),
+        SizedBox(height: AppSpacing.xxxl.h),
+        Center(
+          child: Text(
+            'PAMZ Hisab v1.1.0 · Offline-first · Kishanganj, Bihar',
+            style: AppTextStyles.caption,
+            textAlign: TextAlign.center,
           ),
-
-          SizedBox(height: AppSpacing.xxxl.h),
-          Center(
-            child: Text(
-              'PAMZ Hisab v1.1.0 · Offline-first · Kishanganj, Bihar',
-              style: AppTextStyles.caption,
-              textAlign: TextAlign.center,
-            ),
-          ),
-          SizedBox(height: AppSpacing.lg.h),
-        ],
-      );
+        ),
+        SizedBox(height: AppSpacing.lg.h),
+      ],
+    );
 
     return Scaffold(
       appBar: const CustomAppBar(title: 'Settings'),
@@ -212,12 +184,15 @@ class SettingsScreen extends ConsumerWidget {
                 currentMode == ThemeMode.system
                     ? Icons.radio_button_checked_rounded
                     : Icons.radio_button_unchecked_rounded,
-                color: currentMode == ThemeMode.system ? AppColors.primary : null,
+                color:
+                    currentMode == ThemeMode.system ? AppColors.primary : null,
               ),
               title: const Text('System Default'),
               subtitle: const Text('Matches your device dark/light setting'),
               onTap: () {
-                ref.read(themeModeProvider.notifier).setThemeMode(ThemeMode.system);
+                ref
+                    .read(themeModeProvider.notifier)
+                    .setThemeMode(ThemeMode.system);
                 Navigator.of(ctx).pop();
               },
             ),
@@ -231,7 +206,9 @@ class SettingsScreen extends ConsumerWidget {
               title: const Text('Dark Mode'),
               subtitle: const Text('High contrast dark palette'),
               onTap: () {
-                ref.read(themeModeProvider.notifier).setThemeMode(ThemeMode.dark);
+                ref
+                    .read(themeModeProvider.notifier)
+                    .setThemeMode(ThemeMode.dark);
                 Navigator.of(ctx).pop();
               },
             ),
@@ -240,12 +217,15 @@ class SettingsScreen extends ConsumerWidget {
                 currentMode == ThemeMode.light
                     ? Icons.radio_button_checked_rounded
                     : Icons.radio_button_unchecked_rounded,
-                color: currentMode == ThemeMode.light ? AppColors.primary : null,
+                color:
+                    currentMode == ThemeMode.light ? AppColors.primary : null,
               ),
               title: const Text('Light Mode'),
               subtitle: const Text('Clean light palette'),
               onTap: () {
-                ref.read(themeModeProvider.notifier).setThemeMode(ThemeMode.light);
+                ref
+                    .read(themeModeProvider.notifier)
+                    .setThemeMode(ThemeMode.light);
                 Navigator.of(ctx).pop();
               },
             ),
@@ -272,7 +252,8 @@ class SettingsScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Currency Symbol', style: TextStyle(fontWeight: FontWeight.w600)),
+            const Text('Currency Symbol',
+                style: TextStyle(fontWeight: FontWeight.w600)),
             SizedBox(height: 8.h),
             Wrap(
               spacing: 8.w,
@@ -284,12 +265,15 @@ class SettingsScreen extends ConsumerWidget {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(8.r),
                     onTap: () {
-                      ref.read(appSettingsProvider.notifier).setCurrencySymbol(sym);
+                      ref
+                          .read(appSettingsProvider.notifier)
+                          .setCurrencySymbol(sym);
                       Navigator.of(ctx).pop();
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
-                      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                       decoration: BoxDecoration(
                         color: isSelected
                             ? AppColors.primary
@@ -298,7 +282,9 @@ class SettingsScreen extends ConsumerWidget {
                                 : Colors.grey[100]),
                         borderRadius: BorderRadius.circular(8.r),
                         border: Border.all(
-                          color: isSelected ? AppColors.primary : Colors.grey.withValues(alpha: 0.35),
+                          color: isSelected
+                              ? AppColors.primary
+                              : Colors.grey.withValues(alpha: 0.35),
                           width: isSelected ? 1.5 : 1,
                         ),
                       ),
@@ -306,7 +292,8 @@ class SettingsScreen extends ConsumerWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (isSelected) ...[
-                            Icon(Icons.check_rounded, size: 16.r, color: Colors.white),
+                            Icon(Icons.check_rounded,
+                                size: 16.r, color: Colors.white),
                             SizedBox(width: 4.w),
                           ],
                           Text(
@@ -316,7 +303,8 @@ class SettingsScreen extends ConsumerWidget {
                               fontWeight: FontWeight.w700,
                               color: isSelected
                                   ? Colors.white
-                                  : (Theme.of(context).brightness == Brightness.dark
+                                  : (Theme.of(context).brightness ==
+                                          Brightness.dark
                                       ? Colors.white
                                       : AppColors.textPrimary),
                             ),
@@ -329,13 +317,16 @@ class SettingsScreen extends ConsumerWidget {
               }).toList(),
             ),
             SizedBox(height: 16.h),
-            const Text('Numbering Presentation', style: TextStyle(fontWeight: FontWeight.w600)),
+            const Text('Numbering Presentation',
+                style: TextStyle(fontWeight: FontWeight.w600)),
             SizedBox(height: 8.h),
             RadioGroup<String>(
               groupValue: currentSettings.numberingFormat,
               onChanged: (val) {
                 if (val != null) {
-                  ref.read(appSettingsProvider.notifier).setNumberingFormat(val);
+                  ref
+                      .read(appSettingsProvider.notifier)
+                      .setNumberingFormat(val);
                   Navigator.of(ctx).pop();
                 }
               },
@@ -377,7 +368,9 @@ class SettingsScreen extends ConsumerWidget {
           groupValue: currentSettings.fiscalYearStartMonth,
           onChanged: (val) {
             if (val != null) {
-              ref.read(appSettingsProvider.notifier).setFiscalYearStartMonth(val);
+              ref
+                  .read(appSettingsProvider.notifier)
+                  .setFiscalYearStartMonth(val);
               Navigator.of(ctx).pop();
             }
           },
@@ -436,7 +429,8 @@ class SettingsScreen extends ConsumerWidget {
               ),
               if (gstEnabled) ...[
                 SizedBox(height: 12.h),
-                const Text('Default GST Rate', style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text('Default GST Rate',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
                 SizedBox(height: 8.h),
                 Wrap(
                   spacing: 8.w,
@@ -461,7 +455,9 @@ class SettingsScreen extends ConsumerWidget {
             ),
             TextButton(
               onPressed: () {
-                ref.read(appSettingsProvider.notifier).setGstEnabled(gstEnabled);
+                ref
+                    .read(appSettingsProvider.notifier)
+                    .setGstEnabled(gstEnabled);
                 ref.read(appSettingsProvider.notifier).setGstRate(gstRate);
                 Navigator.of(ctx).pop();
               },

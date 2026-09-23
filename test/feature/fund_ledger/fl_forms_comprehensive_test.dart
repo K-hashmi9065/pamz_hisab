@@ -67,6 +67,14 @@ class _FakeFLTransactionRepo implements FLTransactionRepository {
   }
 
   @override
+  Future<Either<Failure, void>> update(FLTransaction transaction) async {
+    if (failNext) return const Left(DatabaseFailure(message: 'DB update failed'));
+    final idx = txns.indexWhere((t) => t.id == transaction.id);
+    if (idx != -1) txns[idx] = transaction;
+    return const Right(null);
+  }
+
+  @override
   Future<Either<Failure, void>> softDelete(String id) async {
     final idx = txns.indexWhere((t) => t.id == id);
     if (idx != -1) txns[idx] = txns[idx].copyWith(isDeleted: true);

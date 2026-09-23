@@ -70,6 +70,7 @@ class AppDatabase {
       await _createAuditLog(txn);
       await _createFLContacts(txn);
       await _createFLTransactions(txn);
+      await _createFamilyUtilizations(txn);
       await _seedPaymentModes(txn);
       await _seedCategories(txn);
       await _seedAccounts(txn);
@@ -111,6 +112,28 @@ class AppDatabase {
         await _createFLContacts(txn);
         await _createFLTransactions(txn);
       });
+    }
+
+    if (oldVersion < 4) {
+      // Add Family Utilizations table — new feature, non-destructive migration
+      await db.transaction((txn) async {
+        await _createFamilyUtilizations(txn);
+      });
+    }
+
+    if (oldVersion < 5) {
+      // Add payment_mode and payment_reference columns to family_utilizations
+      final tableInfo =
+          await db.rawQuery('PRAGMA table_info(family_utilizations)');
+      final columns = tableInfo.map((r) => r['name'] as String).toSet();
+      if (!columns.contains('payment_mode')) {
+        await db.execute(
+            'ALTER TABLE family_utilizations ADD COLUMN payment_mode TEXT');
+      }
+      if (!columns.contains('payment_reference')) {
+        await db.execute(
+            'ALTER TABLE family_utilizations ADD COLUMN payment_reference TEXT');
+      }
     }
   }
 
@@ -382,6 +405,38 @@ class AppDatabase {
     await txn.execute('''
       CREATE INDEX IF NOT EXISTS idx_fl_txn_type
         ON fl_transactions(type)
+    ''');
+  }
+
+  // ─────────────────────────────────────────────
+  // Family Utilization Tables
+  // ─────────────────────────────────────────────
+
+  Future<void> _createFamilyUtilizations(Transaction txn) async {
+    await txn.execute('''
+      CREATE TABLE IF NOT EXISTS family_utilizations (
+        id                TEXT PRIMARY KEY,
+        amount            REAL NOT NULL,
+        category          TEXT NOT NULL,
+        title             TEXT NOT NULL,
+        paid_to           TEXT,
+        mobile_number     TEXT,
+        description       TEXT,
+        transaction_date  TEXT NOT NULL,
+        payment_mode      TEXT,
+        payment_reference TEXT,
+        created_at        TEXT NOT NULL,
+        updated_at        TEXT NOT NULL,
+        is_deleted        INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await txn.execute('''
+      CREATE INDEX IF NOT EXISTS idx_family_util_date
+        ON family_utilizations(transaction_date DESC)
+    ''');
+    await txn.execute('''
+      CREATE INDEX IF NOT EXISTS idx_family_util_category
+        ON family_utilizations(category)
     ''');
   }
 

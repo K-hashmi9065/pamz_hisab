@@ -6,7 +6,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../shared/widgets/app_bar_widgets.dart';
 
-/// Interactive and comprehensive User Guide for Fund Responsibility Ledger.
+/// Interactive and comprehensive User Guide for PAMZ Fund Responsibility Ledger.
 class FLUserGuideScreen extends StatelessWidget {
   const FLUserGuideScreen({super.key});
 
@@ -59,7 +59,7 @@ class FLUserGuideScreen extends StatelessWidget {
                     ),
                     SizedBox(height: 8.h),
                     Text(
-                      'A reliable, local-first fund management ledger designed for trustees, coordinators, and individuals managing public, family, or organizational funds.',
+                      'A reliable, local-first fund responsibility and utilization management ledger designed for trustees, coordinators, families, and individuals managing public and personal funds.',
                       style: AppTextStyles.body.copyWith(
                         color: isDark
                             ? AppColors.darkTextPrimary
@@ -72,58 +72,98 @@ class FLUserGuideScreen extends StatelessWidget {
             ),
             SizedBox(height: AppSpacing.md.h),
 
-            // Rule 1: The Golden Formula
+            // Section 1: The Authoritative Balance Formula
             _guideSection(
               icon: Icons.calculate_outlined,
               iconColor: AppColors.credit,
-              title: '1. Available Fund Formula',
+              title: '1. Available Balance Formula',
               content:
-                  'The authoritative formula for calculating fund responsibility is:\n\n'
-                  '   Available = Total Received - Total Returned\n\n'
-                  '• Total Received: Total money handed over to you by this contact.\n'
-                  '• Total Returned: Total money returned back to this contact.\n'
-                  '• Total Utilized: Money allocated/spent towards authorized goals. (Tracked internally; does not reduce your initial receipt responsibility until formally settled).',
+                  'The core formula for calculating your net usable available fund is:\n\n'
+                  '   Available Balance = Total Received - Total Returned - Total Utilized\n\n'
+                  'Where:\n'
+                  '• Total Received: Sum of all funds received from all contributors.\n'
+                  '• Total Returned: Sum of all funds returned back to contributors.\n'
+                  '• Total Utilized = Contact Utilized + Family Utilized.\n'
+                  '• Contact Utilized: Funds spent/allocated towards specific contact project goals.\n'
+                  '• Family Utilized: Funds utilized for family & personal expenses (Education, Medical, Grocery, etc.).',
               isDark: isDark,
             ),
             SizedBox(height: AppSpacing.md.h),
 
-            // Rule 2: Transaction Types Explained
+            // Section 2: Dashboard Summary Cards
+            _guideSection(
+              icon: Icons.dashboard_customize_outlined,
+              iconColor: AppColors.info,
+              title: '2. Dashboard Summary Overview',
+              content:
+                  'The Dashboard top header displays three real-time summary cards:\n\n'
+                  '1. Available Balance (Green/Red):\n'
+                  '   Net remaining fund available in your custody after subtracting returns and all utilizations.\n\n'
+                  '2. Contact Utilized (Blue):\n'
+                  '   Sum of all internal project utilizations recorded under Fund Ledger contacts.\n\n'
+                  '3. Total Utilized (Primary/Dark):\n'
+                  '   Combined total of both Contact Utilizations and Family Utilizations.\n\n'
+                  'Lower metric cards show total Received, Returned, and Family Utilized breakdown at a glance.',
+              isDark: isDark,
+            ),
+            SizedBox(height: AppSpacing.md.h),
+
+            // Section 3: Family Utilize Tab
+            _guideSection(
+              icon: Icons.family_restroom_rounded,
+              iconColor: const Color(0xFF3F51B5),
+              title: '3. Family & Personal Utilization (Utilize Tab)',
+              content:
+                  'Use the dedicated Utilize tab (or Dashboard Quick Action) to track household and personal expenses:\n\n'
+                  '• Preset Categories: Education, Electricity, Medical, Grocery, House Expense, Travel, Food, Maintenance, and Other.\n\n'
+                  '• Payment Modes: Supports Cash, UPI, Cheque, and Draft.\n\n'
+                  '• Optional References: Enter UTR number for UPI, Cheque number, or Draft number if available.\n\n'
+                  '• Balance Protection: New utilization entries are automatically checked against the remaining available balance so you never overspend.\n\n'
+                  '• Date & Category Filters: Filter by Today, This Week, This Month, This Year, or Custom date range, with instant full-text search.',
+              isDark: isDark,
+            ),
+            SizedBox(height: AppSpacing.md.h),
+
+            // Section 4: Fund Ledger Contact Transactions
             _guideSection(
               icon: Icons.swap_horiz_rounded,
-              iconColor: AppColors.info,
-              title: '2. The Three Transaction Types',
-              content: '🟢 Receive Fund:\n'
-                  'Record when a contact transfers or deposits money into your custody. Increases available funds.\n\n'
+              iconColor: AppColors.primary,
+              title: '4. Contact Fund Transactions',
+              content:
+                  'Manage individual contributor accounts in the Contacts tab:\n\n'
+                  '🟢 Receive Fund:\n'
+                  'Record funds received from a contributor (supports Cash, UPI, Cheque, Draft with date & time).\n\n'
                   '🔵 Utilize Fund:\n'
-                  'Record when you spend or distribute money on project expenses (e.g. food, medical aid, materials, fees). Includes a purpose title and optional notes.\n\n'
+                  'Record internal spending allocated towards this contact\'s project scope.\n\n'
                   '🔴 Return Fund:\n'
-                  'Record when you return unused or requested funds back to the contributor. Reduces available funds.',
+                  'Record money refunded or returned to the contributor.',
               isDark: isDark,
             ),
             SizedBox(height: AppSpacing.md.h),
 
-            // Rule 3: Privacy by Design
+            // Section 5: Strict Statement Privacy
             _guideSection(
               icon: Icons.shield_outlined,
               iconColor: Colors.amber.shade800,
-              title: '3. Strict Privacy Boundary in PDF Statements',
+              title: '5. Strict PDF Statement Privacy',
               content:
-                  'When you generate or share a PDF statement with a contributor:\n\n'
-                  '• Only Received and Returned entries are included in the statement.\n'
-                  '• Utilized details (internal spending records) are strictly excluded from shared statements to preserve internal privacy and trust.\n'
-                  '• PDFs are generated completely offline on your device.',
+                  'When generating or sharing PDF statements with contributors:\n\n'
+                  '• Only Received and Returned history are included on the shared statement.\n'
+                  '• Internal contact utilizations and personal family expenses are NEVER shown on contributor statements.\n'
+                  '• Ensures complete financial transparency for contributors while maintaining full privacy for internal spending.',
               isDark: isDark,
             ),
             SizedBox(height: AppSpacing.md.h),
 
-            // Rule 4: Data Safety & Backup
+            // Section 6: Data Safety & Offline Security
             _guideSection(
               icon: Icons.offline_pin_outlined,
-              iconColor: AppColors.primary,
-              title: '4. 100% Offline & Local Storage',
-              content: '• All data is saved on your local device storage.\n'
-                  '• No account or internet connection is required.\n'
-                  '• Keep your app updated and perform regular backups via the Settings tab.',
+              iconColor: AppColors.primaryLight,
+              title: '6. 100% Offline & Local Storage',
+              content:
+                  '• All records are safely encrypted and stored on your local device.\n'
+                  '• No external servers or cloud accounts required.\n'
+                  '• Use the Settings tab to manage categories, payment modes, and audit logs.',
               isDark: isDark,
             ),
             SizedBox(height: AppSpacing.xl.h),

@@ -22,7 +22,6 @@ Future<void> main() async {
   if (AppStorageConfig.isSqlite) {
     await AppDatabase.instance.database;
   }
-
   runApp(
     const ProviderScope(
       child: PamzHisabApp(),

@@ -7,6 +7,7 @@ abstract final class RouteNames {
   static const String flContacts = 'flContacts';
   static const String flContactDetail = 'flContactDetail';
   static const String flContactNew = 'flContactNew';
+  static const String utilize = 'utilize';
   static const String reports = 'reports';
   static const String userGuide = 'userGuide';
   static const String settings = 'settings';

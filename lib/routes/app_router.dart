@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../feature/auth_lock/presentation/screens/app_lock_screen.dart';
 import '../feature/dashboard/presentation/screens/dashboard_screen.dart';
+import '../feature/family_utilize/presentation/screens/family_utilize_screen.dart';
 import '../feature/fund_ledger/presentation/screens/fl_contact_detail_screen.dart';
 import '../feature/fund_ledger/presentation/screens/fl_contacts_screen.dart';
 import '../feature/fund_ledger/presentation/screens/fl_reports_screen.dart';
@@ -103,7 +104,14 @@ GoRouter _buildRouter({
             ],
           ),
 
-          // 3. Reports
+          // 3. Utilize (Family / Personal)
+          GoRoute(
+            path: RoutePaths.utilize,
+            name: RouteNames.utilize,
+            builder: (_, __) => const FamilyUtilizeScreen(),
+          ),
+
+          // 4. Reports
           GoRoute(
             path: RoutePaths.reports,
             name: RouteNames.reports,

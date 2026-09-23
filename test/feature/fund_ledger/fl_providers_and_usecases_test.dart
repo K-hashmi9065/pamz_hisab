@@ -70,6 +70,14 @@ class MockFLTransactionRepository implements FLTransactionRepository {
   }
 
   @override
+  Future<Either<Failure, void>> update(FLTransaction transaction) async {
+    if (shouldFail) return const Left(DatabaseFailure(message: 'DB txn update failed'));
+    final idx = txns.indexWhere((t) => t.id == transaction.id);
+    if (idx != -1) txns[idx] = transaction;
+    return const Right(null);
+  }
+
+  @override
   Future<Either<Failure, void>> softDelete(String id) async {
     if (shouldFail) return const Left(DatabaseFailure(message: 'DB txn delete failed'));
     txns.removeWhere((t) => t.id == id);

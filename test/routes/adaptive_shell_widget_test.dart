@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pamz_khata/core/constants/app_constants.dart';
 import 'package:pamz_khata/routes/adaptive_shell.dart';
 import 'package:pamz_khata/routes/route_paths.dart';
 
@@ -22,6 +21,10 @@ void main() {
             GoRoute(
               path: RoutePaths.contacts,
               builder: (_, __) => const Scaffold(body: Text('Contacts Content')),
+            ),
+            GoRoute(
+              path: RoutePaths.utilize,
+              builder: (_, __) => const Scaffold(body: Text('Utilize Content')),
             ),
             GoRoute(
               path: RoutePaths.reports,
@@ -66,12 +69,12 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  group('AdaptiveShell Widget Tests (Fund Ledger 5-Tab Navigation)', () {
-    testWidgets('1. Compact layout (< tabletBreakpoint): NavigationRail is collapsed without branding header', (tester) async {
+  group('AdaptiveShell Widget Tests (Fund Ledger 6-Tab Navigation)', () {
+    testWidgets('1. Compact layout (< tabletBreakpoint, >= 600): NavigationRail is collapsed without branding header', (tester) async {
       addTearDown(tester.view.resetPhysicalSize);
 
-      // Width below AppConstants.tabletBreakpoint (1024.0)
-      const compactSize = Size(AppConstants.tabletBreakpoint - 100, 800);
+      // Width below AppConstants.tabletBreakpoint (840.0) but >= 600
+      const compactSize = Size(750, 800);
       await pumpAdaptiveApp(tester, viewportSize: compactSize);
 
       // NavigationRail is present
@@ -84,19 +87,20 @@ void main() {
       // Active content is rendered
       expect(find.text('Dashboard Content'), findsOneWidget);
 
-      // Icon destinations remain accessible
+      // Icon destinations remain accessible (all 6 tabs)
       expect(find.byIcon(Icons.dashboard_rounded), findsOneWidget);
       expect(find.byIcon(Icons.contacts_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.shopping_bag_rounded), findsOneWidget);
       expect(find.byIcon(Icons.bar_chart_rounded), findsOneWidget);
       expect(find.byIcon(Icons.menu_book_rounded), findsOneWidget);
       expect(find.byIcon(Icons.settings_rounded), findsOneWidget);
     });
 
-    testWidgets('2. Expanded layout (>= tabletBreakpoint): NavigationRail is extended and shows PAMZ Hisab branding', (tester) async {
+    testWidgets('2. Expanded layout (>= tabletBreakpoint): NavigationRail is extended and shows PAMZ Hisab branding and 6 tabs', (tester) async {
       addTearDown(tester.view.resetPhysicalSize);
 
-      // Width at/above AppConstants.tabletBreakpoint (1024.0)
-      const expandedSize = Size(AppConstants.tabletBreakpoint + 170, 834);
+      // Width at/above AppConstants.tabletBreakpoint (840.0)
+      const expandedSize = Size(1194, 834);
       await pumpAdaptiveApp(tester, viewportSize: expandedSize);
 
       // NavigationRail is extended
@@ -106,9 +110,10 @@ void main() {
       // PAMZ Hisab branding text is shown in the sidebar
       expect(find.text('PAMZ Hisab'), findsOneWidget);
 
-      // Navigation item labels are rendered
+      // All 6 Navigation item labels are rendered
       expect(find.text('Dashboard'), findsOneWidget);
       expect(find.text('Contacts'), findsOneWidget);
+      expect(find.text('Utilize'), findsOneWidget);
       expect(find.text('Reports'), findsOneWidget);
       expect(find.text('User Guide'), findsOneWidget);
       expect(find.text('Settings'), findsOneWidget);
@@ -116,7 +121,22 @@ void main() {
       expect(find.text('Dashboard Content'), findsOneWidget);
     });
 
-    testWidgets('3. Tapping navigation destination updates router and displays targeted screen content', (tester) async {
+    testWidgets('3. Mobile layout (< 600): NavigationBar displays all 6 tabs', (tester) async {
+      addTearDown(tester.view.resetPhysicalSize);
+
+      const mobileSize = Size(400, 800);
+      await pumpAdaptiveApp(tester, viewportSize: mobileSize);
+
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.text('Dashboard'), findsOneWidget);
+      expect(find.text('Contacts'), findsOneWidget);
+      expect(find.text('Utilize'), findsOneWidget);
+      expect(find.text('Reports'), findsOneWidget);
+      expect(find.text('User Guide'), findsOneWidget);
+      expect(find.text('Settings'), findsOneWidget);
+    });
+
+    testWidgets('4. Tapping navigation destination updates router and displays targeted screen content', (tester) async {
       addTearDown(tester.view.resetPhysicalSize);
 
       const expandedSize = Size(1194, 834);
@@ -130,6 +150,13 @@ void main() {
 
       expect(find.text('Contacts Content'), findsOneWidget);
       expect(find.text('Dashboard Content'), findsNothing);
+
+      // Tap Utilize tab
+      await tester.tap(find.text('Utilize'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Utilize Content'), findsOneWidget);
+      expect(find.text('Contacts Content'), findsNothing);
 
       // Tap Reports tab
       await tester.tap(find.text('Reports'));

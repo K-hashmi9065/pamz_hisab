@@ -33,6 +33,11 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
       path: RoutePaths.contacts,
     ),
     _NavItem(
+      icon: Icons.shopping_bag_rounded,
+      label: 'Utilize',
+      path: RoutePaths.utilize,
+    ),
+    _NavItem(
       icon: Icons.bar_chart_rounded,
       label: 'Reports',
       path: RoutePaths.reports,
@@ -52,15 +57,38 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
+    final isMobile = width < 600.0;
     final isWide = width >= AppConstants.tabletBreakpoint;
 
-    // Synchronize selected navigation rail index with active route path
+    // Synchronize selected navigation index with active route path
     final location = GoRouterState.of(context).matchedLocation;
     for (int i = 0; i < _navItems.length; i++) {
       if (location.startsWith(_navItems[i].path)) {
         _selectedIndex = i;
         break;
       }
+    }
+
+    if (isMobile) {
+      return Scaffold(
+        body: widget.child,
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: (i) {
+            setState(() => _selectedIndex = i);
+            context.go(_navItems[i].path);
+          },
+          destinations: _navItems
+              .map(
+                (item) => NavigationDestination(
+                  icon: Icon(item.icon),
+                  selectedIcon: Icon(item.icon),
+                  label: item.label,
+                ),
+              )
+              .toList(),
+        ),
+      );
     }
 
     return Scaffold(

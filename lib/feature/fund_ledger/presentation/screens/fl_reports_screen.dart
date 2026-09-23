@@ -194,6 +194,7 @@ class _FLReportsScreenState extends ConsumerState<FLReportsScreen> {
               child: RefreshIndicator(
                 onRefresh: () async {
                   ref.invalidate(flReportsListProvider);
+                  ref.invalidate(flReportsTotalsProvider);
                 },
                 child: displayedReports.when(
                   loading: () =>
@@ -206,7 +207,8 @@ class _FLReportsScreenState extends ConsumerState<FLReportsScreen> {
                     final totalReceived = totals?.totalReceived ?? 0;
                     final totalUtilized = totals?.totalUtilized ?? 0;
                     final totalReturned = totals?.totalReturned ?? 0;
-                    final netAvailable = totalReceived - totalReturned;
+                    final netAvailable = totals?.netAvailable ??
+                        (totalReceived - totalReturned - totalUtilized);
 
                     return CustomScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),

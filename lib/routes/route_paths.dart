@@ -6,6 +6,7 @@ abstract final class RoutePaths {
   static const String dashboard = '/dashboard';
   static const String contacts = '/contacts';
   static const String contactDetail = ':id';
+  static const String utilize = '/utilize';
   static const String reports = '/reports';
   static const String userGuide = '/user-guide';
   static const String settings = '/settings';

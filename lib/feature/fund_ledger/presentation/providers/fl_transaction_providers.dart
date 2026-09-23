@@ -10,7 +10,9 @@ import '../../data/datasources/fl_transaction_sqlite_datasource.dart';
 import '../../data/repositories/fl_transaction_repository_impl.dart';
 import '../../data/services/fl_pdf_service.dart';
 import '../../data/services/fl_share_service.dart';
+import '../../../family_utilize/presentation/providers/family_utilize_providers.dart';
 import '../../domain/entities/fl_dashboard_summary.dart';
+import '../../domain/entities/fl_reports_totals.dart';
 import '../../domain/entities/fl_transaction.dart';
 import '../../domain/repositories/fl_transaction_repository.dart';
 import '../../domain/usecases/fl_transaction_usecases.dart';
@@ -82,10 +84,15 @@ final flTransactionHistoryProvider =
 final flDashboardSummaryProvider =
     FutureProvider<FLDashboardSummary>((ref) async {
   final repo = ref.watch(flTransactionRepositoryProvider);
+  final familyRepo = ref.watch(familyUtilizeRepositoryProvider);
 
   // Efficient aggregate query instead of fetching all rows
   final totalsResult = await repo.getGlobalTotals();
   final totals = totalsResult.getOrElse((_) => FLContactTotals.zero());
+
+  // Total Family Utilized
+  final familyTotalResult = await familyRepo.getTotalFamilyUtilized();
+  final familyTotal = familyTotalResult.getOrElse((_) => 0.0);
 
   // Recent activity — newest 20 across all contacts
   final allResult = await repo.getAll();
@@ -102,6 +109,7 @@ final flDashboardSummaryProvider =
     totalReceived: totals.totalReceived,
     totalUtilized: totals.totalUtilized,
     totalReturned: totals.totalReturned,
+    totalFamilyUtilized: familyTotal,
     recentTransactions: recent,
   );
 });
@@ -172,7 +180,9 @@ final flReportsListProvider = FutureProvider<List<FLTransaction>>((ref) async {
 
 /// Report totals intentionally ignore the type filter so summary cards remain
 /// stable while the transaction list is filtered by type.
-final flReportsTotalsProvider = FutureProvider<FLContactTotals>((ref) async {
+/// Total Utilized = Family Utilize + Contact Utilize
+/// Net Available = Total Received - Total Returned - Total Utilized
+final flReportsTotalsProvider = FutureProvider<FLReportsTotals>((ref) async {
   final filter = ref.watch(flReportsFilterProvider);
   final usecase = ref.watch(getAllFLTransactionsUsecaseProvider);
   final result = await usecase(
@@ -182,7 +192,7 @@ final flReportsTotalsProvider = FutureProvider<FLContactTotals>((ref) async {
   );
   final transactions = result.getOrElse((_) => <FLTransaction>[]);
   var totalReceived = 0.0;
-  var totalUtilized = 0.0;
+  var totalContactUtilized = 0.0;
   var totalReturned = 0.0;
 
   for (final transaction in transactions) {
@@ -190,15 +200,26 @@ final flReportsTotalsProvider = FutureProvider<FLContactTotals>((ref) async {
       case FLTransactionType.received:
         totalReceived += transaction.amount;
       case FLTransactionType.utilized:
-        totalUtilized += transaction.amount;
+        totalContactUtilized += transaction.amount;
       case FLTransactionType.returned:
         totalReturned += transaction.amount;
     }
   }
 
-  return FLContactTotals(
+  var totalFamilyUtilized = 0.0;
+  if (filter.contactId == null) {
+    final familyRepo = ref.watch(familyUtilizeRepositoryProvider);
+    final familyResult = await familyRepo.getTotalFamilyUtilized(
+      from: filter.from,
+      to: filter.to,
+    );
+    totalFamilyUtilized = familyResult.getOrElse((_) => 0.0);
+  }
+
+  return FLReportsTotals(
     totalReceived: totalReceived,
-    totalUtilized: totalUtilized,
+    totalContactUtilized: totalContactUtilized,
+    totalFamilyUtilized: totalFamilyUtilized,
     totalReturned: totalReturned,
   );
 });
@@ -253,6 +274,7 @@ class FLTransactionFormNotifier extends StateNotifier<AsyncValue<void>> {
         _ref.invalidate(flContactSummaryProvider(contactId));
         _ref.invalidate(flDashboardSummaryProvider);
         _ref.invalidate(flReportsListProvider);
+        _ref.invalidate(flReportsTotalsProvider);
         return true;
       },
     );
@@ -273,6 +295,7 @@ class FLTransactionFormNotifier extends StateNotifier<AsyncValue<void>> {
         _ref.invalidate(flContactSummaryProvider(contactId));
         _ref.invalidate(flDashboardSummaryProvider);
         _ref.invalidate(flReportsListProvider);
+        _ref.invalidate(flReportsTotalsProvider);
         return true;
       },
     );
@@ -293,6 +316,7 @@ class FLTransactionFormNotifier extends StateNotifier<AsyncValue<void>> {
         _ref.invalidate(flContactSummaryProvider(transaction.contactId));
         _ref.invalidate(flDashboardSummaryProvider);
         _ref.invalidate(flReportsListProvider);
+        _ref.invalidate(flReportsTotalsProvider);
         return true;
       },
     );

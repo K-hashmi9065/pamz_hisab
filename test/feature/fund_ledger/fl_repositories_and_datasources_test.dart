@@ -48,6 +48,9 @@ class ThrowingTransactionDataSource implements FLTransactionDataSource {
   Future<void> insert(FLTransactionModel model) => throw Exception('Insert exploded');
 
   @override
+  Future<void> update(FLTransactionModel model) => throw Exception('Update exploded');
+
+  @override
   Future<void> softDelete(String id) => throw Exception('Delete exploded');
 
   @override
@@ -92,6 +95,7 @@ void main() {
       expect((await repo.getByContact('c1')).isLeft(), isTrue);
       expect((await repo.getAll()).isLeft(), isTrue);
       expect((await repo.insert(txn)).isLeft(), isTrue);
+      expect((await repo.update(txn)).isLeft(), isTrue);
       expect((await repo.softDelete('t1')).isLeft(), isTrue);
       expect((await repo.getTotals('c1')).isLeft(), isTrue);
       expect((await repo.getGlobalTotals()).isLeft(), isTrue);

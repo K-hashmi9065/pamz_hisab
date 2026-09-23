@@ -9,6 +9,8 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_date_utils.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../routes/route_names.dart';
+import '../../../family_utilize/presentation/providers/family_utilize_providers.dart';
+import '../../../family_utilize/presentation/widgets/add_family_utilize_sheet.dart';
 import '../../../fund_ledger/domain/entities/fl_dashboard_summary.dart';
 import '../../../fund_ledger/presentation/providers/fl_transaction_providers.dart';
 import '../../../fund_ledger/presentation/screens/fl_contact_form_screen.dart';
@@ -16,7 +18,6 @@ import '../../../fund_ledger/presentation/widgets/fl_receive_form.dart';
 import '../../../fund_ledger/presentation/widgets/fl_return_form.dart';
 import '../../../fund_ledger/presentation/widgets/fl_summary_card.dart';
 import '../../../fund_ledger/presentation/widgets/fl_transaction_tile.dart';
-import '../../../fund_ledger/presentation/widgets/fl_utilize_form.dart';
 
 /// Dashboard screen for PAMZ Fund Responsibility Ledger.
 /// Shows global metrics, quick action modals, and recent transaction activity.
@@ -31,6 +32,8 @@ class DashboardScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(flDashboardSummaryProvider);
+          ref.invalidate(familyUtilizeSummaryProvider);
+          ref.invalidate(familyUtilizeListNotifierProvider);
         },
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -51,7 +54,7 @@ class DashboardScreen extends ConsumerWidget {
                     data: (summary) => Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _buildHeadlineCard(context, summary.availableAmount),
+                        _buildTopBalanceCards(context, summary),
                         SizedBox(height: AppSpacing.md.h),
                         _buildMetricCards(context, summary),
                       ],
@@ -127,11 +130,86 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeadlineCard(BuildContext context, double availableAmount) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final isPositive = availableAmount >= 0;
+  Widget _buildTopBalanceCards(
+      BuildContext context, FLDashboardSummary summary) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isPositive = summary.availableBalance >= 0;
 
+    final availableCard = _buildSummaryCardItem(
+      title: 'Available Balance',
+      amount: CurrencyFormatter.formatIndian(summary.availableBalance),
+      subtitle: 'Received - Returned - Total Utilized',
+      icon: Icons.account_balance_wallet_rounded,
+      color: isPositive ? AppColors.credit : AppColors.debit,
+      isDark: isDark,
+    );
+
+    final contactUtilizedCard = _buildSummaryCardItem(
+      title: 'Contact Utilized',
+      amount: CurrencyFormatter.formatIndian(summary.totalContactUtilized),
+      subtitle: 'Fund Ledger Contacts',
+      icon: Icons.people_alt_outlined,
+      color: AppColors.info,
+      isDark: isDark,
+    );
+
+    final totalUtilizedCard = _buildSummaryCardItem(
+      title: 'Total Utilized',
+      amount: CurrencyFormatter.formatIndian(summary.totalUtilized),
+      subtitle: 'Contact + Family',
+      icon: Icons.shopping_bag_outlined,
+      color: AppColors.debitText,
+      isDark: isDark,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 650) {
+          // Desktop / iPad / Tablet Wide: 3 cards in one Row
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: availableCard),
+                SizedBox(width: 8.w),
+                Expanded(child: contactUtilizedCard),
+                SizedBox(width: 8.w),
+                Expanded(child: totalUtilizedCard),
+              ],
+            ),
+          );
+        } else {
+          // Mobile / Narrow: Stacked responsive layout
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              availableCard,
+              SizedBox(height: 8.h),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: contactUtilizedCard),
+                    SizedBox(width: 8.w),
+                    Expanded(child: totalUtilizedCard),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildSummaryCardItem({
+    required String title,
+    required String amount,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required bool isDark,
+  }) {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -143,46 +221,51 @@ class DashboardScreen extends ConsumerWidget {
       ),
       color: isDark ? AppColors.darkCardBackground : AppColors.cardBackground,
       child: Padding(
-        padding: EdgeInsets.all(AppSpacing.lg.r),
+        padding: EdgeInsets.all(AppSpacing.md.r),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'TOTAL AVAILABLE FUND RESPONSIBILITY',
-                  style: AppTextStyles.label.copyWith(
-                    color: isDark
-                        ? AppColors.darkTextSecondary
-                        : AppColors.textSecondary,
-                    letterSpacing: 0.8,
-                    fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Text(
+                    title,
+                    style: AppTextStyles.label.copyWith(
+                      color: isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary,
+                      letterSpacing: 0.5,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12.sp,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Icon(
-                  Icons.account_balance_wallet_rounded,
-                  color: isPositive ? AppColors.credit : AppColors.debit,
-                  size: 24.r,
-                ),
+                Icon(icon, color: color, size: 20.r),
               ],
             ),
             SizedBox(height: 6.h),
             Text(
-              CurrencyFormatter.formatIndian(availableAmount),
-              style: AppTextStyles.display.copyWith(
-                color: isPositive ? AppColors.credit : AppColors.debit,
+              amount,
+              style: AppTextStyles.h1.copyWith(
+                color: color,
                 fontWeight: FontWeight.w800,
               ),
             ),
             SizedBox(height: 4.h),
             Text(
-              'Total Available = Total Received - Total Returned',
+              subtitle,
               style: AppTextStyles.caption.copyWith(
                 color: isDark
                     ? AppColors.darkTextSecondary
                     : AppColors.textSecondary,
+                fontSize: 10.sp,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -204,17 +287,7 @@ class DashboardScreen extends ConsumerWidget {
               subtitle: 'All contacts',
             ),
           ),
-          SizedBox(width: 8.w),
-          Expanded(
-            child: FLSummaryCard(
-              label: 'Utilized',
-              amount: summary.totalUtilized,
-              icon: Icons.shopping_bag_outlined,
-              color: AppColors.info,
-              subtitle: 'Allocated',
-            ),
-          ),
-          SizedBox(width: 8.w),
+          SizedBox(width: 6.w),
           Expanded(
             child: FLSummaryCard(
               label: 'Returned',
@@ -222,6 +295,16 @@ class DashboardScreen extends ConsumerWidget {
               icon: Icons.arrow_upward_rounded,
               color: AppColors.debit,
               subtitle: 'Returned',
+            ),
+          ),
+          SizedBox(width: 6.w),
+          Expanded(
+            child: FLSummaryCard(
+              label: 'Family Utilized',
+              amount: summary.totalFamilyUtilized,
+              icon: Icons.shopping_bag_outlined,
+              color: AppColors.info,
+              subtitle: 'Family / Personal',
             ),
           ),
         ],
@@ -262,7 +345,7 @@ class DashboardScreen extends ConsumerWidget {
             Expanded(
               child: FilledButton.icon(
                 icon: const Icon(Icons.shopping_bag_outlined, size: 18),
-                label: const Text('Utilize'),
+                label: const Text('Family Utilize'),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.info,
                   foregroundColor: AppColors.onPrimary,
@@ -271,9 +354,12 @@ class DashboardScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(28.r),
                   ),
                 ),
-                onPressed: () => FLUtilizeForm.show(
+                onPressed: () => AddFamilyUtilizeSheet.show(
                   context,
-                  onSuccess: () => ref.invalidate(flDashboardSummaryProvider),
+                  onSuccess: () {
+                    ref.invalidate(flDashboardSummaryProvider);
+                    ref.invalidate(familyUtilizeSummaryProvider);
+                  },
                 ),
               ),
             ),

@@ -60,6 +60,11 @@ class InMemoryFLTransactionDataSource implements FLTransactionDataSource {
   }
 
   @override
+  Future<void> update(FLTransactionModel model) async {
+    _store[model.id] = model;
+  }
+
+  @override
   Future<List<FLTransactionModel>> getByContact(String contactId) async {
     return _store.values
         .where((t) => t.contactId == contactId && !t.isDeleted)

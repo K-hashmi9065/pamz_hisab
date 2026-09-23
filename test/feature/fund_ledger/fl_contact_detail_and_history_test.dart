@@ -33,22 +33,28 @@ class FakeDetailContactRepo implements FLContactRepository {
   );
 
   @override
-  Future<Either<Failure, FLContact?>> findById(String id) async => Right(contact);
+  Future<Either<Failure, FLContact?>> findById(String id) async =>
+      Right(contact);
 
   @override
   Future<Either<Failure, List<FLContact>>> getAll() async => Right([contact]);
 
   @override
-  Future<Either<Failure, bool>> existsByMobile(String mobileNumber, {String? excludeId}) async => const Right(false);
+  Future<Either<Failure, bool>> existsByMobile(String mobileNumber,
+          {String? excludeId}) async =>
+      const Right(false);
 
   @override
-  Future<Either<Failure, void>> insert(FLContact contact) async => const Right(null);
+  Future<Either<Failure, void>> insert(FLContact contact) async =>
+      const Right(null);
 
   @override
-  Future<Either<Failure, void>> update(FLContact contact) async => const Right(null);
+  Future<Either<Failure, void>> update(FLContact contact) async =>
+      const Right(null);
 
   @override
-  Future<Either<Failure, void>> softDelete(String id) async => const Right(null);
+  Future<Either<Failure, void>> softDelete(String id) async =>
+      const Right(null);
 }
 
 class FakeDetailTxnRepo implements FLTransactionRepository {
@@ -87,19 +93,28 @@ class FakeDetailTxnRepo implements FLTransactionRepository {
   ];
 
   @override
-  Future<Either<Failure, List<FLTransaction>>> getByContact(String contactId) async => Right(List.from(txns));
+  Future<Either<Failure, List<FLTransaction>>> getByContact(
+          String contactId) async =>
+      Right(List.from(txns));
 
   @override
-  Future<Either<Failure, List<FLTransaction>>> getAll({FLTransactionType? type, String? contactId, DateTime? from, DateTime? to}) async => Right(List.from(txns));
+  Future<Either<Failure, List<FLTransaction>>> getAll(
+          {FLTransactionType? type,
+          String? contactId,
+          DateTime? from,
+          DateTime? to}) async =>
+      Right(List.from(txns));
 
   @override
   Future<Either<Failure, FLContactTotals>> getTotals(String contactId) async {
-    return const Right(FLContactTotals(totalReceived: 10000, totalUtilized: 4000, totalReturned: 2000));
+    return const Right(FLContactTotals(
+        totalReceived: 10000, totalUtilized: 4000, totalReturned: 2000));
   }
 
   @override
   Future<Either<Failure, FLContactTotals>> getGlobalTotals() async {
-    return const Right(FLContactTotals(totalReceived: 10000, totalUtilized: 4000, totalReturned: 2000));
+    return const Right(FLContactTotals(
+        totalReceived: 10000, totalUtilized: 4000, totalReturned: 2000));
   }
 
   @override
@@ -112,6 +127,11 @@ class FakeDetailTxnRepo implements FLTransactionRepository {
   Future<Either<Failure, void>> softDelete(String id) async {
     txns.removeWhere((t) => t.id == id);
     return const Right(null);
+  }
+
+  @override
+  Future<Either<Failure, void>> update(FLTransaction transaction) {
+    throw UnimplementedError();
   }
 }
 
@@ -138,7 +158,8 @@ void main() {
       txnRepo = FakeDetailTxnRepo();
     });
 
-    testWidgets('FLContactDetailScreen exports PDF and switches tabs', (tester) async {
+    testWidgets('FLContactDetailScreen exports PDF and switches tabs',
+        (tester) async {
       await tester.pumpWidget(
         buildTestWidget(
           const FLContactDetailScreen(contactId: 'c1'),
@@ -172,7 +193,8 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('FLTransactionHistory tabs, search, and detail modal', (tester) async {
+    testWidgets('FLTransactionHistory tabs, search, and detail modal',
+        (tester) async {
       await tester.pumpWidget(
         buildTestWidget(
           const FLTransactionHistory(
